@@ -9,6 +9,7 @@ from geometry_viz import (
     create_quadrilateral_figure,
     create_circle_figure,
     create_cube_figure,
+    create_sphere_figure,
 )
 from geometry_parser import parse_geometry_request, default_points_for_shape
 
