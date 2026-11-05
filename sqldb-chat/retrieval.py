@@ -11,15 +11,39 @@ EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 
 
 def _get_model():
-    """Dapatkan model sentence-transformers (lazy load)."""
-    from sentence_transformers import SentenceTransformer
+    """Dapatkan model sentence-transformers (lazy load).
 
-    return SentenceTransformer(EMBED_MODEL)
+    Mengembalikan None jika sentence-transformers tidak dapat diimpor
+    (masalah lingkungan torch/transformers). Pengguna harus menangani
+    kasus None di pemanggil.
+    """
+    try:
+        from sentence_transformers import SentenceTransformer
+
+        return SentenceTransformer(EMBED_MODEL)
+    except Exception as e:
+        logger.warning(
+            "Tidak dapat memuat sentence-transformers: %s. "
+            "Retrieval skema akan dikosongkan.", e
+        )
+        return None
 
 
 def build_index(docs, persist_dir="data/chroma_db"):
-    """Sematkan dokumen skema ke ChromaDB dengan sentence-transformers."""
+    """Sematkan dokumen skema ke ChromaDB dengan sentence-transformers.
+
+    Jika sentence-transformers tidak tersedia, indeksi dilewati dan
+    fungsi kembali tanpa mengubah apa-apa (degrade gracefully).
+    """
     Path(persist_dir).mkdir(parents=True, exist_ok=True)
+
+    model = _get_model()
+    if model is None:
+        logger.warning(
+            "Indeks skema dilewati karena sentence-transformers tidak tersedia."
+        )
+        return
+
     client = chromadb.PersistentClient(path=persist_dir)
     try:
         client.delete_collection(name=COLLECTION_NAME)
@@ -27,7 +51,6 @@ def build_index(docs, persist_dir="data/chroma_db"):
         pass
     collection = client.create_collection(name=COLLECTION_NAME)
 
-    model = _get_model()
     texts = []
     metadatas = []
     ids = []
@@ -50,11 +73,27 @@ def build_index(docs, persist_dir="data/chroma_db"):
 
 
 def retrieve_schema_docs(question, top_k=3, persist_dir="data/chroma_db"):
-    """Ambil top-K dokumen skema yang relevan dengan pertanyaan."""
-    client = chromadb.PersistentClient(path=persist_dir)
-    collection = client.get_collection(name=COLLECTION_NAME)
+    """Ambil top-K dokumen skema yang relevan dengan pertanyaan.
 
+    Jika sentence-transformers atau koleksi ChromaDB tidak tersedia,
+    mengembalikan daftar kosong (degrade gracefully).
+    """
     model = _get_model()
+    if model is None:
+        logger.warning(
+            "Retrieval skema dikosongkan karena sentence-transformers tidak tersedia."
+        )
+        return []
+
+    try:
+        client = chromadb.PersistentClient(path=persist_dir)
+        collection = client.get_collection(name=COLLECTION_NAME)
+    except Exception as e:
+        logger.warning(
+            "Tidak dapat membuka koleksi ChromaDB: %s. Retrieval dikosongkan.", e
+        )
+        return []
+
     query_embedding = model.encode([question]).tolist()[0]
 
     results = collection.query(

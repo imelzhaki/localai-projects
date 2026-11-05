@@ -30,12 +30,21 @@ def initialize_history():
 
 
 def initialize_schema():
-    """Inisialisasi skema dan indeks retrieval (dipanggil dari main)."""
+    """Inisialisasi skema dan indeks retrieval (dipanggil dari main).
+
+    Jika build_index gagal (mis. sentence-transformers tidak tersedia),
+    aplikasi tetap dapat berjalan dengan retrieval dikosongkan.
+    """
     if "schema_docs" not in st.session_state:
         init_db()
         st.session_state.schema_docs = build_schema_docs()
-        build_index(st.session_state.schema_docs, persist_dir="data/chroma_db")
-        logger.info("Indeks skema dibangun di startup")
+        try:
+            build_index(st.session_state.schema_docs, persist_dir="data/chroma_db")
+            logger.info("Indeks skema dibangun di startup")
+        except Exception as exc:
+            logger.warning(
+                "Gagal membangun indeks skema: %s. Retrieval akan dikosongkan.", exc
+            )
     if "fewshot_examples" not in st.session_state:
         st.session_state.fewshot_examples = get_fewshot_examples()
         logger.info("Contoh few-shot dimuat: %d", len(st.session_state.fewshot_examples))
