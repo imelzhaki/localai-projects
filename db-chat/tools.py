@@ -48,23 +48,29 @@ def get_sales_data(category=None, month=None):
     return execute_query(sql, ())
 
 
-def get_customer(customer_id=None, nama=None):
-    """Detail pelanggan berdasarkan ID atau nama."""
+def get_customer(customer_id=None, nama=None, kota=None):
+    """Detail pelanggan berdasarkan ID, nama, atau kota."""
     if customer_id is not None:
         rows = execute_query(
             "SELECT * FROM Customer WHERE customer_id = ?", (customer_id,)
         )
         return rows[0] if rows else {}
+    conditions = []
+    params = []
     if nama:
-        rows = execute_query(
-            "SELECT * FROM Customer WHERE nama LIKE ?", (f"%{nama}%",)
-        )
-        return rows[0] if rows else {}
-    return {}
+        conditions.append("nama LIKE ?")
+        params.append(f"%{nama}%")
+    if kota:
+        conditions.append("kota = ?")
+        params.append(kota)
+    if not conditions:
+        return []
+    sql = "SELECT * FROM Customer WHERE " + " AND ".join(conditions)
+    return execute_query(sql, tuple(params))
 
 
-def get_product(product_id=None, nama=None, kategori=None):
-    """Detail produk dan stok berdasarkan ID, nama, atau kategori."""
+def get_product(product_id=None, nama=None, kategori=None, stok_max=None, harga_max=None):
+    """Detail produk dan stok berdasarkan ID, nama, kategori, stok maksimal, atau harga maksimal."""
     if product_id is not None:
         rows = execute_query(
             "SELECT * FROM Product WHERE product_id = ?", (product_id,)
@@ -78,14 +84,20 @@ def get_product(product_id=None, nama=None, kategori=None):
     if kategori:
         conditions.append("kategori = ?")
         params.append(kategori)
+    if stok_max is not None:
+        conditions.append("stok <= ?")
+        params.append(stok_max)
+    if harga_max is not None:
+        conditions.append("harga <= ?")
+        params.append(harga_max)
     if not conditions:
         return {}
     sql = "SELECT * FROM Product WHERE " + " AND ".join(conditions)
     return execute_query(sql, tuple(params))
 
 
-def get_sales_order(order_id=None, customer_id=None, rentang_tanggal=None):
-    """Pesanan penjualan berdasarkan ID order, ID pelanggan, atau rentang tanggal."""
+def get_sales_order(order_id=None, customer_id=None, rentang_tanggal=None, status=None):
+    """Pesanan penjualan berdasarkan ID order, ID pelanggan, rentang tanggal, atau status."""
     conditions = []
     params = []
     if order_id is not None:
@@ -100,6 +112,9 @@ def get_sales_order(order_id=None, customer_id=None, rentang_tanggal=None):
         if len(parts) == 2:
             conditions.append("so.tanggal BETWEEN ? AND ?")
             params.extend(parts)
+    if status:
+        conditions.append("so.status = ?")
+        params.append(status)
     if not conditions:
         return []
     sql = """
@@ -185,11 +200,45 @@ def list_purchase_orders():
     )
 
 
-def list_customers():
-    """Daftar semua pelanggan (nama dan kota)."""
+def list_suppliers():
+    """Daftar semua supplier (ID, nama, kontak, kota, telepon)."""
     return execute_query(
-        "SELECT customer_id, nama, kota, telepon, email FROM Customer ORDER BY nama"
+        "SELECT supplier_id, nama, kontak, kota, telepon FROM Supplier ORDER BY nama"
     )
+
+
+def get_sales_order_items(order_id=None):
+    """Detail item dalam pesanan penjualan (produk, kuantitas, harga satuan, subtotal)."""
+    if order_id is not None:
+        sql = """
+        SELECT soi.item_id, p.nama AS produk, soi.kuantitas, soi.harga_satuan,
+               (soi.kuantitas * soi.harga_satuan) AS subtotal
+        FROM Sales_Order_Item soi
+        JOIN Product p ON p.product_id = soi.product_id
+        WHERE soi.order_id = ?
+        ORDER BY soi.item_id
+        """
+        return execute_query(sql, (order_id,))
+    sql = """
+    SELECT soi.item_id, so.order_id, p.nama AS produk, soi.kuantitas, soi.harga_satuan,
+           (soi.kuantitas * soi.harga_satuan) AS subtotal
+    FROM Sales_Order_Item soi
+    JOIN Sales_Order so ON so.order_id = soi.order_id
+    JOIN Product p ON p.product_id = soi.product_id
+    ORDER BY so.order_id DESC, soi.item_id
+    LIMIT 50
+    """
+    return execute_query(sql, ())
+
+
+def get_database_stats():
+    """Statistik ringkasan database: jumlah baris per tabel."""
+    tables = ["Customer", "Supplier", "Product", "Sales_Order", "Sales_Order_Item", "Purchase_Order"]
+    stats = {}
+    for table in tables:
+        row = execute_query(f"SELECT COUNT(*) AS cnt FROM {table}")
+        stats[table] = row[0]["cnt"] if row else 0
+    return stats
 
 
 # Peta nama alat ke fungsi, untuk dieksekusi oleh ollama_client
@@ -203,6 +252,9 @@ execute_tool_map = {
     "list_customers": list_customers,
     "list_sales_orders": list_sales_orders,
     "list_purchase_orders": list_purchase_orders,
+    "list_suppliers": list_suppliers,
+    "get_sales_order_items": get_sales_order_items,
+    "get_database_stats": get_database_stats,
 }
 
 
@@ -232,12 +284,13 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "get_customer",
-            "description": "Ambil detail pelanggan berdasarkan ID atau nama.",
+            "description": "Ambil detail pelanggan berdasarkan ID, nama, atau kota.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "customer_id": {"type": "integer", "description": "ID pelanggan"},
                     "nama": {"type": "string", "description": "Nama pelanggan (parsial cocok)"},
+                    "kota": {"type": "string", "description": "Kota pelanggan"},
                 },
                 "required": [],
             },
@@ -247,13 +300,15 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "get_product",
-            "description": "Ambil detail produk dan stok berdasarkan ID, nama, atau kategori.",
+            "description": "Ambil detail produk dan stok berdasarkan ID, nama, kategori, stok maksimal, atau harga maksimal.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "product_id": {"type": "integer", "description": "ID produk"},
                     "nama": {"type": "string", "description": "Nama produk (parsial cocok)"},
                     "kategori": {"type": "string", "description": "Kategori produk"},
+                    "stok_max": {"type": "integer", "description": "Stok maksimal (produk dengan stok <= nilai ini)"},
+                    "harga_max": {"type": "integer", "description": "Harga maksimal (produk dengan harga <= nilai ini)"},
                 },
                 "required": [],
             },
@@ -263,7 +318,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "get_sales_order",
-            "description": "Ambil pesanan penjualan berdasarkan ID order, ID pelanggan, atau rentang tanggal.",
+            "description": "Ambil pesanan penjualan berdasarkan ID order, ID pelanggan, rentang tanggal, atau status pembayaran.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -272,6 +327,10 @@ TOOLS = [
                     "rentang_tanggal": {
                         "type": "string",
                         "description": "Rentang tanggal format 'YYYY-MM-DD s.d. YYYY-MM-DD'",
+                    },
+                    "status": {
+                        "type": "string",
+                        "description": "Status pembayaran (contoh: Lunas, Belum Lunas, Pending)",
                     },
                 },
                 "required": [],
@@ -341,6 +400,44 @@ TOOLS = [
         "function": {
             "name": "list_purchase_orders",
             "description": "Daftar semua pesanan pembelian (ID, tanggal, total, status, supplier). Gunakan untuk pertanyaan tentang daftar atau jumlah pesanan pembelian.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_suppliers",
+            "description": "Daftar semua supplier (ID, nama, kontak, kota, telepon). Gunakan untuk pertanyaan yang meminta daftar lengkap supplier.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_sales_order_items",
+            "description": "Detail item dalam pesanan penjualan (produk, kuantitas, harga satuan, subtotal). Gunakan order_id untuk item dalam satu pesanan, atau tanpa argumen untuk daftar item terbaru.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "order_id": {"type": "integer", "description": "ID pesanan penjualan"},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_database_stats",
+            "description": "Statistik ringkasan database: jumlah baris per tabel. Gunakan untuk mengetahui jumlah data di setiap tabel.",
             "parameters": {
                 "type": "object",
                 "properties": {},

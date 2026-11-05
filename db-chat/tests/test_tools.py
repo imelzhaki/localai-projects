@@ -108,3 +108,94 @@ def test_tools_schemas_are_valid():
         assert "parameters" in fn
         assert "type" in fn["parameters"]
         assert "properties" in fn["parameters"]
+
+
+def test_list_suppliers(tmp_path, monkeypatch):
+    db_path = tmp_path / "test.db"
+    monkeypatch.setattr("database.DB_PATH", db_path)
+    monkeypatch.setattr("tools.DB_PATH", db_path)
+    init_db()
+    hasil = tools.list_suppliers()
+    assert isinstance(hasil, list)
+    assert len(hasil) == 10
+    assert all("nama" in r and "kota" in r and "telepon" in r for r in hasil)
+
+
+def test_get_sales_order_items_by_order(tmp_path, monkeypatch):
+    db_path = tmp_path / "test.db"
+    monkeypatch.setattr("database.DB_PATH", db_path)
+    monkeypatch.setattr("tools.DB_PATH", db_path)
+    init_db()
+    hasil = tools.get_sales_order_items(order_id=1)
+    assert isinstance(hasil, list)
+    assert len(hasil) > 0
+    assert all("produk" in r and "kuantitas" in r and "subtotal" in r for r in hasil)
+
+
+def test_get_sales_order_items_all(tmp_path, monkeypatch):
+    db_path = tmp_path / "test.db"
+    monkeypatch.setattr("database.DB_PATH", db_path)
+    monkeypatch.setattr("tools.DB_PATH", db_path)
+    init_db()
+    hasil = tools.get_sales_order_items()
+    assert isinstance(hasil, list)
+    assert len(hasil) > 0
+
+
+def test_get_database_stats(tmp_path, monkeypatch):
+    db_path = tmp_path / "test.db"
+    monkeypatch.setattr("database.DB_PATH", db_path)
+    monkeypatch.setattr("tools.DB_PATH", db_path)
+    init_db()
+    stats = tools.get_database_stats()
+    assert isinstance(stats, dict)
+    assert stats["Customer"] == 20
+    assert stats["Supplier"] == 10
+    assert stats["Product"] == 30
+    assert stats["Sales_Order"] == 25
+    assert stats["Sales_Order_Item"] == 26
+    assert stats["Purchase_Order"] == 15
+
+
+def test_get_customer_by_kota(tmp_path, monkeypatch):
+    db_path = tmp_path / "test.db"
+    monkeypatch.setattr("database.DB_PATH", db_path)
+    monkeypatch.setattr("tools.DB_PATH", db_path)
+    init_db()
+    hasil = tools.get_customer(kota="Jakarta")
+    assert isinstance(hasil, list)
+    assert len(hasil) > 0
+    assert all(r["kota"] == "Jakarta" for r in hasil)
+
+
+def test_get_sales_order_by_status(tmp_path, monkeypatch):
+    db_path = tmp_path / "test.db"
+    monkeypatch.setattr("database.DB_PATH", db_path)
+    monkeypatch.setattr("tools.DB_PATH", db_path)
+    init_db()
+    hasil = tools.get_sales_order(status="Lunas")
+    assert isinstance(hasil, list)
+    assert len(hasil) > 0
+    assert all(r["status"] == "Lunas" for r in hasil)
+
+
+def test_get_product_by_stok_max(tmp_path, monkeypatch):
+    db_path = tmp_path / "test.db"
+    monkeypatch.setattr("database.DB_PATH", db_path)
+    monkeypatch.setattr("tools.DB_PATH", db_path)
+    init_db()
+    hasil = tools.get_product(stok_max=5)
+    assert isinstance(hasil, list)
+    assert len(hasil) > 0
+    assert all(r["stok"] <= 5 for r in hasil)
+
+
+def test_get_product_by_harga_max(tmp_path, monkeypatch):
+    db_path = tmp_path / "test.db"
+    monkeypatch.setattr("database.DB_PATH", db_path)
+    monkeypatch.setattr("tools.DB_PATH", db_path)
+    init_db()
+    hasil = tools.get_product(harga_max=1000000)
+    assert isinstance(hasil, list)
+    assert len(hasil) > 0
+    assert all(r["harga"] <= 1000000 for r in hasil)
