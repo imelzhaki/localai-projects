@@ -52,7 +52,7 @@ def handle_user_input():
             )
             if panggilan:
                 for nama, args in panggilan:
-                    st.info(f"Memanggil alat: {nama}({args})")
+                    st.info(f"🔧 Alat dipanggil: `{nama}` dengan argumen `{args}`")
             response = st.write_stream([teks]) if teks else ""
         except Exception as exc:
             logger.error("Gagal memproses pesan: %s", exc)
@@ -63,6 +63,12 @@ def handle_user_input():
         assistant_message = build_assistant_message(response)
         st.session_state.messages.append(assistant_message)
         save_history(st.session_state.messages)
+
+    # Disclaimer verifikasi bisnis
+    st.caption(
+        "⚠️ Data dihasilkan oleh AI berdasarkan hasil alat database. "
+        "Selalu verifikasi terhadap database asli sebelum membuat keputusan bisnis."
+    )
 
 
 def main():

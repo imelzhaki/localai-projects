@@ -15,7 +15,11 @@ def execute_tool(name, arguments):
     if fn is None:
         return f"Alat '{name}' tidak tersedia."
     try:
-        return fn(**arguments)
+        hasil = fn(**arguments)
+        # Hasil kosong -> pesan eksplisit agar model tidak halusinasi
+        if isinstance(hasil, (list, dict)) and len(hasil) == 0:
+            return f"Tidak ada data yang ditemukan untuk alat {name}."
+        return hasil
     except TypeError as exc:
         logger.error("Argumen salah untuk alat %s: %s", name, exc)
         return f"Argumen salah untuk alat {name}: {exc}"
@@ -23,6 +27,15 @@ def execute_tool(name, arguments):
         logger.error("Gagal mengeksekusi alat %s: %s", name, exc)
         return f"Gagal mengeksekusi alat {name}: {exc}"
 
+
+_SYSTEM_PROMPT = """Anda adalah asisten database kantor. Aturan ketat:
+
+1. Hanya jawab berdasarkan hasil alat (tool) yang dipanggil. JANGAN pernah mengarang, menebak, atau menyimpulkan data dari luar hasil alat.
+2. Jika alat mengembalikan data kosong (list kosong atau dict kosong), katakan dengan jelas: "Tidak ada data yang ditemukan."
+3. Jika alat mengembalikan error, sampaikan error tersebut kepada user tanpa menebak.
+4. Selama menyebutkan angka uang/omset, pastikan angka tersebut berasal langsung dari hasil alat, bukan dari perhitungan Anda sendiri.
+5. Data ini dihasilkan oleh AI. Selalu verifikasi terhadap database asli sebelum membuat keputusan bisnis.
+6. Jawab dalam Bahasa Indonesia."""
 
 def chat_with_tools(messages, tools=TOOLS, model=MODEL):
     """Kirim pesan ke Ollama dengan dukungan tool calling.
@@ -36,6 +49,11 @@ def chat_with_tools(messages, tools=TOOLS, model=MODEL):
     """
     client = Client(host=OLLAMA_HOST)
     daftar_panggilan = []
+
+    # Sisipkan system prompt di awal jika belum ada
+    has_system = any(m.get("role") == "system" for m in messages)
+    if not has_system:
+        messages = [{"role": "system", "content": _SYSTEM_PROMPT}] + list(messages)
 
     while True:
         response = client.chat(
