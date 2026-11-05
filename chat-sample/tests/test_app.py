@@ -65,7 +65,7 @@ def _siapkan_mock_streamlit(monkeypatch, prompt, isi_url, daftar_url):
 
 
 def test_handle_user_input_sisipkan_konteks_url(monkeypatch):
-    """handle_user_input menyisipkan pesan sistem dengan konten URL saat user sertakan URL."""
+    """handle_user_input menyisipkan konten URL ke pesan user saat user sertakan URL."""
 
     kirim_ke_model = _siapkan_mock_streamlit(
         monkeypatch,
@@ -77,8 +77,12 @@ def test_handle_user_input_sisipkan_konteks_url(monkeypatch):
     app.handle_user_input()
 
     assert len(kirim_ke_model) >= 1
-    assert kirim_ke_model[0]["role"] == "system"
-    assert "Konten tiruan dari contoh.com" in kirim_ke_model[0]["content"]
+    # Konten web disisipkan ke pesan user (bukan system message)
+    user_msgs = [m for m in kirim_ke_model if m["role"] == "user"]
+    assert len(user_msgs) >= 1
+    assert "Konten tiruan dari contoh.com" in user_msgs[0]["content"]
+    assert "Baca https://contoh.com untuk info" in user_msgs[0]["content"]
+    assert all(m["role"] != "system" for m in kirim_ke_model)
 
 
 def test_handle_user_input_tanpa_url_tidak_sisipkan_sistem(monkeypatch):
@@ -148,7 +152,7 @@ def test_handle_user_input_url_tanpa_konten_tidak_sisipkan_sistem(monkeypatch):
 
 
 def test_handle_user_input_url_dengan_konten_sisipkan_sistem(monkeypatch):
-    """URL ditemukan dengan konten → pesan sistem disisipkan dengan konten tersebut."""
+    """URL ditemukan dengan konten → konten disisipkan ke pesan user."""
 
     kirim_ke_model = []
 
@@ -194,5 +198,7 @@ def test_handle_user_input_url_dengan_konten_sisipkan_sistem(monkeypatch):
     app.handle_user_input()
 
     assert len(kirim_ke_model) >= 1
-    assert kirim_ke_model[0]["role"] == "system"
-    assert "Konten dari contoh.com" in kirim_ke_model[0]["content"]
+    user_msgs = [m for m in kirim_ke_model if m["role"] == "user"]
+    assert len(user_msgs) >= 1
+    assert "Konten dari contoh.com" in user_msgs[0]["content"]
+    assert all(m["role"] != "system" for m in kirim_ke_model)

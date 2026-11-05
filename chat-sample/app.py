@@ -47,15 +47,15 @@ def handle_user_input():
             konten_tergabung = "\n\n".join(
                 f"=== {u['url']} ===\n{u['content']}" for u in sukses
             )
-            konteks_url = {
-                "role": "system",
-                "content": (
-                    "Berikut adalah konten dari halaman web yang disebutkan user. "
-                    "Gunakan konten ini untuk menjawab pertanyaan user.\n\n"
-                    f"{konten_tergabung}"
-                ),
-            }
-            model_messages = [konteks_url] + model_messages
+            # Sisipkan konten web ke dalam pesan user agar model tidak mengabaikannya
+            user_message["content"] = (
+                f"{prompt}\n\n"
+                "Berikut adalah konten dari halaman web yang disebutkan di atas. "
+                "Gunakan konten ini untuk menjawab pertanyaan user.\n\n"
+                f"{konten_tergabung}"
+            )
+            # Perbarui pesan user di session state agar konten tersimpan
+            st.session_state.messages[-1] = user_message
 
         if gagal:
             daftar_gagal = "; ".join(
