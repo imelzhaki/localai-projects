@@ -55,18 +55,22 @@ def _html_ke_teks(html):
 def fetch_page_content(url, timeout=10):
     """Muat halaman web dan kembalikan teks yang diekstrak.
 
-    Mengembalikan string kosong jika gagal memuat atau bukan HTML.
+    Mengembalikan string kosong jika gagal memuat.
     """
     try:
         permintaan = urllib.request.Request(
             url,
             headers={
-                "User-Agent": "Mozilla/5.0 (compatible; LocalAI Chat/1.0)"
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/120.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7",
             },
         )
         with urllib.request.urlopen(permintaan, timeout=timeout) as respons:
-            tipe_konten = respons.headers.get("Content-Type", "")
-            if "text/html" not in tipe_konten.lower():
+            tipe_konten = respons.headers.get("Content-Type", "").lower()
+            if "html" not in tipe_konten:
                 return ""
             html = respons.read().decode("utf-8", errors="replace")
             return _html_ke_teks(html)

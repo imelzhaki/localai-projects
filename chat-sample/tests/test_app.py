@@ -84,3 +84,81 @@ def test_handle_user_input_tanpa_url_tidak_sisipkan_sistem(monkeypatch):
     assert len(kirim_ke_model) >= 1
     assert kirim_ke_model[0]["role"] == "user"
     assert all(m["role"] != "system" for m in kirim_ke_model)
+
+
+def test_handle_user_input_url_tanpa_konten_tidak_sisipkan_sistem(monkeypatch):
+    """URL ditemukan tapi konten kosong → tidak ada pesan sistem, peringatan ditampilkan."""
+
+    peringatan = []
+
+    def fake_chat_stream(messages, model="llama3.2:3b"):
+        yield "Balasan tiruan"
+
+    monkeypatch.setattr("app.chat_stream", fake_chat_stream)
+    monkeypatch.setattr("app.st.chat_input", lambda *a, **k: "Baca https://gagal.com")
+    monkeypatch.setattr(
+        "app.fetch_urls_in_text",
+        lambda teks: ("", ["https://gagal.com"]),
+    )
+
+    app.st.session_state = SimpleNamespace(messages=[])
+
+    class PalsuChatMessage:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    monkeypatch.setattr("app.st.chat_message", lambda role: PalsuChatMessage())
+    monkeypatch.setattr("app.st.markdown", lambda *a, **k: None)
+    monkeypatch.setattr("app.st.info", lambda *a, **k: None)
+    monkeypatch.setattr("app.st.warning", lambda *a, **k: peringatan.append(a[0]))
+    monkeypatch.setattr("app.st.error", lambda *a, **k: None)
+    monkeypatch.setattr("app.st.write_stream", lambda gen: list(gen)[-1])
+    monkeypatch.setattr("app.save_history", lambda messages: None)
+
+    app.handle_user_input()
+
+    assert len(peringatan) >= 1
+    assert "gagal.com" in peringatan[0]
+
+
+def test_handle_user_input_url_dengan_konten_sisipkan_sistem(monkeypatch):
+    """URL ditemukan dengan konten → pesan sistem disisipkan dengan konten tersebut."""
+
+    kirim_ke_model = []
+
+    def fake_chat_stream(messages, model="llama3.2:3b"):
+        kirim_ke_model.extend(messages)
+        yield "Balasan tiruan"
+
+    monkeypatch.setattr("app.chat_stream", fake_chat_stream)
+    monkeypatch.setattr("app.st.chat_input", lambda *a, **k: "Baca https://contoh.com")
+    monkeypatch.setattr(
+        "app.fetch_urls_in_text",
+        lambda teks: ("Konten dari contoh.com", ["https://contoh.com"]),
+    )
+
+    app.st.session_state = SimpleNamespace(messages=[])
+
+    class PalsuChatMessage:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    monkeypatch.setattr("app.st.chat_message", lambda role: PalsuChatMessage())
+    monkeypatch.setattr("app.st.markdown", lambda *a, **k: None)
+    monkeypatch.setattr("app.st.info", lambda *a, **k: None)
+    monkeypatch.setattr("app.st.warning", lambda *a, **k: None)
+    monkeypatch.setattr("app.st.error", lambda *a, **k: None)
+    monkeypatch.setattr("app.st.write_stream", lambda gen: list(gen)[-1])
+    monkeypatch.setattr("app.save_history", lambda messages: None)
+
+    app.handle_user_input()
+
+    assert len(kirim_ke_model) >= 1
+    assert kirim_ke_model[0]["role"] == "system"
+    assert "Konten dari contoh.com" in kirim_ke_model[0]["content"]

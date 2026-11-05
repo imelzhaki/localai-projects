@@ -59,6 +59,74 @@ def test_fetch_page_content_error_returns_empty(monkeypatch):
     assert text == ""
 
 
+def test_fetch_page_content_non_html_still_parsed(monkeypatch):
+    """Content-Type tanpa text/html tetap dicoba di-parse (lenient)."""
+
+    class FakeResp:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        @property
+        def headers(self):
+            class H:
+                def get(self, key, default=""):
+                    return "application/xhtml+xml"
+
+            return H()
+
+        def read(self):
+            return b"<html><body><p>XHTML konten</p></body></html>"
+
+    monkeypatch.setattr(
+        "web_fetcher.urllib.request.urlopen", lambda *a, **k: FakeResp()
+    )
+
+    text = fetch_page_content("https://example.com")
+    assert "XHTML konten" in text
+
+
+def test_fetch_page_content_mengirim_header_browser(monkeypatch):
+    """Permintaan harus menyertakan header User-Agent dan Accept seperti browser."""
+
+    class FakeResp:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        @property
+        def headers(self):
+            class H:
+                def get(self, key, default=""):
+                    return "text/html"
+
+            return H()
+
+        def read(self):
+            return b"<html><body><p>ok</p></body></html>"
+
+    captured = {}
+
+    def fake_urlopen(req, *a, **k):
+        captured["headers"] = req.header_items()
+        return FakeResp()
+
+    monkeypatch.setattr(
+        "web_fetcher.urllib.request.urlopen", fake_urlopen
+    )
+
+    fetch_page_content("https://example.com")
+
+    header_dict = {k.lower(): v for k, v in captured["headers"]}
+    assert "user-agent" in header_dict
+    assert "Mozilla" in header_dict["user-agent"]
+    assert "accept" in header_dict
+
+
 def test_fetch_urls_in_text(monkeypatch):
     class FakeResp:
         def __enter__(self):
@@ -85,3 +153,44 @@ def test_fetch_urls_in_text(monkeypatch):
     content, urls = fetch_urls_in_text("Baca https://contoh.com untuk info")
     assert urls == ["https://contoh.com"]
     assert "Konten dari contoh.com" in content
+
+
+def test_fetch_urls_in_text_some_fail(monkeypatch):
+    """Saat satu URL gagal dan satu berhasil, hanya konten berhasil yang dikembalikan."""
+
+    class FakeResp:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        @property
+        def headers(self):
+            class H:
+                def get(self, key, default=""):
+                    return "text/html"
+
+            return H()
+
+        def read(self):
+            return b"<html><body><p>Hanya yang berhasil</p></body></html>"
+
+    panggilan = [0]
+
+    def fake_urlopen(*a, **k):
+        panggilan[0] += 1
+        if panggilan[0] == 2:
+            raise Exception("Gagal terhubung")
+        return FakeResp()
+
+    monkeypatch.setattr(
+        "web_fetcher.urllib.request.urlopen", fake_urlopen
+    )
+
+    content, urls = fetch_urls_in_text(
+        "Baca https://berhasil.com dan https://gagal.com"
+    )
+    assert urls == ["https://berhasil.com", "https://gagal.com"]
+    assert "Hanya yang berhasil" in content
+    assert "gagal.com" not in content

@@ -38,16 +38,21 @@ def handle_user_input():
     url_content, urls = fetch_urls_in_text(prompt)
     model_messages = list(st.session_state.messages)
     if urls:
-        st.info(f"Membuka {len(urls)} halaman: {', '.join(urls)}")
-        konteks_url = {
-            "role": "system",
-            "content": (
-                "Berikut adalah konten dari halaman web yang disebutkan user. "
-                "Gunakan konten ini untuk menjawab pertanyaan user.\n\n"
-                f"{url_content}"
-            ),
-        }
-        model_messages = [konteks_url] + model_messages
+        if url_content:
+            st.info(f"Membuka {len(urls)} halaman: {', '.join(urls)}")
+            konteks_url = {
+                "role": "system",
+                "content": (
+                    "Berikut adalah konten dari halaman web yang disebutkan user. "
+                    "Gunakan konten ini untuk menjawab pertanyaan user.\n\n"
+                    f"{url_content}"
+                ),
+            }
+            model_messages = [konteks_url] + model_messages
+        else:
+            st.warning(
+                "Gagal membuka halaman web: " + ", ".join(urls)
+            )
 
     with st.chat_message("assistant"):
         try:

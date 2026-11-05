@@ -48,6 +48,8 @@ Aplikasi akan:
 3. Menyisipkan konten halaman sebagai konteks untuk model
 4. Menjawab pertanyaan Anda berdasarkan konten halaman tersebut
 
+Jika pengambilan halaman gagal (situs memblokir, tidak dapat diakses, atau bukan HTML), aplikasi akan menampilkan peringatan dan melanjutkan respons tanpa konten web.
+
 Anda dapat menyertakan beberapa URL dalam satu pesan.
 
 ## Struktur Proyek
@@ -94,7 +96,7 @@ Harapan: 15 tes lulus (3 history + 2 ollama_client + 4 app + 6 web_fetcher).
 | Ollama tidak terhubung | Jalankan `ollama serve` terlebih dahulu |
 | Model `llama3.2:3b` tidak ditemukan | Jalankan `ollama pull llama3.2:3b` |
 | `streamlit` tidak dikenali | Jalankan `pip install -r requirements.txt` |
-| Konten halaman web tidak terbaca | Pastikan URL dapat diakses dan mengembalikan HTML; beberapa situs memblokir pengambilan otomatis |
+| Konten halaman web tidak terbaca | Pastikan URL dapat diakses dan mengembalikan HTML; beberapa situs memblokir pengambilan otomatis. Aplikasi akan menampilkan peringatan dan melanjutkan tanpa konten web. |
 
 ## Lisensi
 
