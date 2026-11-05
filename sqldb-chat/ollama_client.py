@@ -36,7 +36,10 @@ ATURAN KETAT:
    penjelasan atau komentar tambahan.
 8. Jawab dalam bahasa yang sama dengan pertanyaan user (Bahasa Indonesia atau
    Inggris), tetapi kueri SQL selalu dalam bahasa Inggris (kata kunci SQL).
-9. Jika tidak cukup informasi untuk menghasilkan SQL, kembalikan SELECT sederhana
+9. Untuk fungsi tanggal di SQLite, gunakan `strftime('%m', kolom)` untuk bulan
+   dan `strftime('%Y', kolom)` untuk tahun. JANGAN gunakan `EXTRACT()` karena
+   tidak didukung oleh SQLite.
+10. Jika tidak cukup informasi untuk menghasilkan SQL, kembalikan SELECT sederhana
    dari tabel yang paling relevan.
 """
 

@@ -9,7 +9,7 @@ from ollama_client import generate_sql
 from schema import build_schema_docs
 from retrieval import build_index, retrieve_schema_docs
 from fewshot import get_fewshot_examples
-from validation import validate_sql
+from validation import validate_sql, normalize_sql_for_sqlite
 from critic import critique_sql
 from execution import execute_select
 
@@ -105,6 +105,9 @@ def process_question(question):
     # 4. Critik kedua (semantic review)
     criticism = critique_sql(question, sql, retrieved)
     final_sql = criticism["sql"]
+
+    # Normalisasi konstruk non-SQLite (mis. EXTRACT -> strftime) sebelum eksekusi
+    final_sql = normalize_sql_for_sqlite(final_sql)
 
     # 5. Eksekusi read-only
     exec_result = execute_select(final_sql)
