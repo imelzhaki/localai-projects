@@ -3,81 +3,82 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from ollama_client import chat_with_tools
+import ollama_client
 
 
-def test_chat_with_tools_returns_text_when_no_tool_call(monkeypatch):
-    """Jika model tidak memanggil alat, kembalikan teks respons."""
-    kirim = []
+def test_generate_sql_returns_sql_string(monkeypatch):
+    """generate_sql mengembalikan string SQL."""
 
-    class FakeMessage:
-        def __init__(self, content, tool_calls=None):
-            self.content = content
-            self.tool_calls = tool_calls or []
+    def fake_chat(messages, model, options, stream):
+        class FakeMessage:
+            content = "SELECT * FROM Customer WHERE kota = 'Jakarta';"
 
-    class FakeChunk:
-        def __init__(self, content, tool_calls=None):
-            self.message = FakeMessage(content, tool_calls)
+        class FakeResponse:
+            message = FakeMessage()
 
-    class FakeClient:
-        def chat(self, model, messages, tools, stream):
-            kirim.append((model, messages, tools))
-            yield FakeChunk("Halo, ada yang bisa saya bantu?")
+        return FakeResponse()
 
-    monkeypatch.setattr("ollama_client.Client", lambda host: FakeClient())
+    monkeypatch.setattr(ollama_client.Client, "chat", staticmethod(fake_chat))
 
-    teks, panggilan = chat_with_tools(
-        [{"role": "user", "content": "Halo"}], tools=[]
-    )
-    assert teks == "Halo, ada yang bisa saya bantu?"
-    assert panggilan == []
+    question = "Tampilkan pelanggan di Jakarta"
+    schema_docs = [
+        {
+            "table": "Customer",
+            "purpose": "Menyimpan data pelanggan.",
+            "columns": ["customer_id: ID pelanggan", "nama: Nama pelanggan", "kota: Kota pelanggan"],
+            "value_legend": {},
+        }
+    ]
+    fewshot_examples = [
+        {
+            "question": "Tampilkan semua pelanggan.",
+            "sql": "SELECT * FROM Customer;",
+            "language": "id",
+        }
+    ]
+
+    result = ollama_client.generate_sql(question, schema_docs, fewshot_examples)
+    assert isinstance(result, str)
+    assert "SELECT" in result.upper()
 
 
-def test_chat_with_tools_executes_tool_call(monkeypatch):
-    """Jika model memanggil alat, eksekusi dan kembalikan hasil ke model."""
-    panggilan_model = []
+def test_generate_sql_includes_schema_and_fewshot(monkeypatch):
+    """generate_sql menyertakan skema dan contoh few-shot dalam prompt."""
 
-    class FakeMessage:
-        def __init__(self, content, tool_calls=None):
-            self.content = content
-            self.tool_calls = tool_calls or []
+    captured_prompt = {}
 
-    class FakeChunk:
-        def __init__(self, content, tool_calls=None):
-            self.message = FakeMessage(content, tool_calls)
+    def fake_chat(messages, model, options, stream):
+        captured_prompt["content"] = messages[-1]["content"]
+        class FakeMessage:
+            content = "SELECT * FROM Customer;"
 
-    class FakeClient:
-        def chat(self, model, messages, tools, stream):
-            panggilan_model.append((model, messages, tools))
-            if len(panggilan_model) == 1:
-                # Panggilan pertama: model meminta alat
-                yield FakeChunk("", tool_calls=[
-                    {
-                        "function": {
-                            "name": "get_customer",
-                            "arguments": '{"customer_id": 1}',
-                        }
-                    }
-                ])
-            else:
-                # Panggilan kedua: model memberikan jawaban akhir
-                yield FakeChunk("Pelanggan ditemukan: Budi Santoso")
+        class FakeResponse:
+            message = FakeMessage()
 
-    monkeypatch.setattr("ollama_client.Client", lambda host: FakeClient())
+        return FakeResponse()
 
-    dieksekusi = []
+    monkeypatch.setattr(ollama_client.Client, "chat", staticmethod(fake_chat))
 
-    def fake_execute(name, args):
-        dieksekusi.append((name, args))
-        if name == "get_customer":
-            return [{"customer_id": 1, "nama": "Budi Santoso", "kota": "Jakarta"}]
-        return []
+    question = "Test"
+    schema_docs = [
+        {
+            "table": "Customer",
+            "purpose": "Tabel pelanggan.",
+            "columns": ["customer_id: ID", "nama: Nama"],
+            "value_legend": {},
+        }
+    ]
+    fewshot_examples = [
+        {
+            "question": "Contoh pertanyaan.",
+            "sql": "SELECT * FROM Customer;",
+            "language": "id",
+        }
+    ]
 
-    monkeypatch.setattr("ollama_client.execute_tool", fake_execute)
+    ollama_client.generate_sql(question, schema_docs, fewshot_examples)
 
-    teks, panggilan = chat_with_tools(
-        [{"role": "user", "content": "Siapa pelanggan ID 1?"}],
-        tools=[{"type": "function", "function": {"name": "get_customer", "description": "...", "parameters": {}}}],
-    )
-    assert "Budi Santoso" in teks
-    assert ("get_customer", {"customer_id": 1}) in dieksekusi
+    prompt = captured_prompt["content"]
+    assert "Customer" in prompt
+    assert "Contoh pertanyaan" in prompt
+    assert "SELECT * FROM Customer;" in prompt
