@@ -174,6 +174,39 @@ def test_list_products_by_harga_max(tmp_path, monkeypatch):
     assert all(r["harga"] <= 500000 for r in hasil)
 
 
+def test_get_product_null_string_params(tmp_path, monkeypatch):
+    db_path = tmp_path / "test.db"
+    monkeypatch.setattr("database.DB_PATH", db_path)
+    monkeypatch.setattr("tools.DB_PATH", db_path)
+    init_db()
+    # harga_max="null" harus diabaikan, tidak menyebabkan error
+    hasil = tools.get_product(nama="Laptop", harga_max="null")
+    assert isinstance(hasil, list)
+    assert len(hasil) > 0
+
+
+def test_get_product_product_id_string_converted(tmp_path, monkeypatch):
+    db_path = tmp_path / "test.db"
+    monkeypatch.setattr("database.DB_PATH", db_path)
+    monkeypatch.setattr("tools.DB_PATH", db_path)
+    init_db()
+    semua_produk = tools.list_products()
+    if semua_produk:
+        first_id = str(semua_produk[0]["product_id"])
+        hasil = tools.get_product(product_id=first_id)
+        assert isinstance(hasil, dict)
+        assert "nama" in hasil
+
+
+def test_get_product_fake_id_returns_empty(tmp_path, monkeypatch):
+    db_path = tmp_path / "test.db"
+    monkeypatch.setattr("database.DB_PATH", db_path)
+    monkeypatch.setattr("tools.DB_PATH", db_path)
+    init_db()
+    hasil = tools.get_product(product_id=999999)
+    assert hasil == {}
+
+
 def test_get_sales_by_product(tmp_path, monkeypatch):
     db_path = tmp_path / "test.db"
     monkeypatch.setattr("database.DB_PATH", db_path)

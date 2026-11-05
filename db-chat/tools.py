@@ -71,6 +71,24 @@ def get_customer(customer_id=None, nama=None, kota=None):
 
 def get_product(product_id=None, nama=None, kategori=None, stok_max=None, harga_max=None):
     """Detail produk dan stok berdasarkan ID, nama, kategori, stok maksimal, atau harga maksimal."""
+    # Normalisasi: string kosong, "null", "None", "kosong" treated as None
+    _null_values = {"", "null", "None", "kosong", "tidak ada", "n/a", "na"}
+    if product_id in _null_values:
+        product_id = None
+    if nama in _null_values:
+        nama = None
+    if kategori in _null_values:
+        kategori = None
+    if stok_max in _null_values:
+        stok_max = None
+    if harga_max in _null_values:
+        harga_max = None
+    # Konversi product_id ke integer jika berupa string angka
+    if product_id is not None and not isinstance(product_id, int):
+        try:
+            product_id = int(product_id)
+        except (ValueError, TypeError):
+            product_id = None
     if product_id is not None:
         rows = execute_query(
             "SELECT * FROM Product WHERE product_id = ?", (product_id,)
