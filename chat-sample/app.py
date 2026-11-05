@@ -2,7 +2,7 @@ import streamlit as st
 
 from history import load_history, save_history
 from ollama_client import chat_stream
-from web_fetcher import fetch_urls_in_text
+from web_fetcher import fetch_urls_in_text_with_status
 
 
 def build_user_message(content):
@@ -35,24 +35,33 @@ def handle_user_input():
         st.markdown(prompt)
 
     # Deteksi URL dalam pesan user dan muat konten halaman sebagai konteks
-    url_content, urls = fetch_urls_in_text(prompt)
+    hasil = fetch_urls_in_text_with_status(prompt)
+    urls = hasil["urls"]
     model_messages = list(st.session_state.messages)
     if urls:
-        if url_content:
-            st.info(f"Membuka {len(urls)} halaman: {', '.join(urls)}")
+        sukses = [u for u in hasil["per_url"] if u["status"] == "ok"]
+        gagal = [u for u in hasil["per_url"] if u["status"] == "error"]
+
+        if sukses:
+            st.info(f"Membuka {len(sukses)} halaman: {', '.join(u['url'] for u in sukses)}")
+            konten_tergabung = "\n\n".join(
+                f"=== {u['url']} ===\n{u['content']}" for u in sukses
+            )
             konteks_url = {
                 "role": "system",
                 "content": (
                     "Berikut adalah konten dari halaman web yang disebutkan user. "
                     "Gunakan konten ini untuk menjawab pertanyaan user.\n\n"
-                    f"{url_content}"
+                    f"{konten_tergabung}"
                 ),
             }
             model_messages = [konteks_url] + model_messages
-        else:
-            st.warning(
-                "Gagal membuka halaman web: " + ", ".join(urls)
+
+        if gagal:
+            daftar_gagal = "; ".join(
+                f"{u['url']} ({u['error']})" for u in gagal
             )
+            st.warning(f"Gagal membuka halaman: {daftar_gagal}")
 
     with st.chat_message("assistant"):
         try:

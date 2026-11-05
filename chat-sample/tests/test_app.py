@@ -29,8 +29,20 @@ def _siapkan_mock_streamlit(monkeypatch, prompt, isi_url, daftar_url):
     monkeypatch.setattr("app.chat_stream", fake_chat_stream)
     monkeypatch.setattr("app.st.chat_input", lambda *a, **k: prompt)
     monkeypatch.setattr(
-        "app.fetch_urls_in_text",
-        lambda teks: (isi_url, daftar_url),
+        "app.fetch_urls_in_text_with_status",
+        lambda teks: {
+            "urls": daftar_url,
+            "konten": isi_url,
+            "per_url": [
+                {
+                    "url": u,
+                    "status": "ok" if isi_url else "error",
+                    "content": isi_url,
+                    "error": None if isi_url else "Gagal mengambil konten",
+                }
+                for u in daftar_url
+            ],
+        },
     )
 
     app.st.session_state = SimpleNamespace(messages=[])
@@ -97,8 +109,19 @@ def test_handle_user_input_url_tanpa_konten_tidak_sisipkan_sistem(monkeypatch):
     monkeypatch.setattr("app.chat_stream", fake_chat_stream)
     monkeypatch.setattr("app.st.chat_input", lambda *a, **k: "Baca https://gagal.com")
     monkeypatch.setattr(
-        "app.fetch_urls_in_text",
-        lambda teks: ("", ["https://gagal.com"]),
+        "app.fetch_urls_in_text_with_status",
+        lambda teks: {
+            "urls": ["https://gagal.com"],
+            "konten": "",
+            "per_url": [
+                {
+                    "url": "https://gagal.com",
+                    "status": "error",
+                    "content": "",
+                    "error": "Koneksi ditolak",
+                }
+            ],
+        },
     )
 
     app.st.session_state = SimpleNamespace(messages=[])
@@ -136,8 +159,19 @@ def test_handle_user_input_url_dengan_konten_sisipkan_sistem(monkeypatch):
     monkeypatch.setattr("app.chat_stream", fake_chat_stream)
     monkeypatch.setattr("app.st.chat_input", lambda *a, **k: "Baca https://contoh.com")
     monkeypatch.setattr(
-        "app.fetch_urls_in_text",
-        lambda teks: ("Konten dari contoh.com", ["https://contoh.com"]),
+        "app.fetch_urls_in_text_with_status",
+        lambda teks: {
+            "urls": ["https://contoh.com"],
+            "konten": "Konten dari contoh.com",
+            "per_url": [
+                {
+                    "url": "https://contoh.com",
+                    "status": "ok",
+                    "content": "Konten dari contoh.com",
+                    "error": None,
+                }
+            ],
+        },
     )
 
     app.st.session_state = SimpleNamespace(messages=[])

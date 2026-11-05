@@ -57,6 +57,18 @@ def fetch_page_content(url, timeout=10):
 
     Mengembalikan string kosong jika gagal memuat.
     """
+    hasil = fetch_page_content_with_status(url, timeout)
+    return hasil["content"]
+
+
+def fetch_page_content_with_status(url, timeout=10):
+    """Muat halaman web dan kembalikan dict dengan status, konten, dan error.
+
+    Mengembalikan:
+        {"status": "ok", "content": "<teks>", "error": None}
+        atau
+        {"status": "error", "content": "", "error": "<pesan error>"}
+    """
     try:
         permintaan = urllib.request.Request(
             url,
@@ -71,11 +83,23 @@ def fetch_page_content(url, timeout=10):
         with urllib.request.urlopen(permintaan, timeout=timeout) as respons:
             tipe_konten = respons.headers.get("Content-Type", "").lower()
             if "html" not in tipe_konten:
-                return ""
+                return {
+                    "status": "error",
+                    "content": "",
+                    "error": f"Bukan HTML (Content-Type: {tipe_konten or 'tidak diketahui'})",
+                }
             html = respons.read().decode("utf-8", errors="replace")
-            return _html_ke_teks(html)
-    except Exception:
-        return ""
+            return {
+                "status": "ok",
+                "content": _html_ke_teks(html),
+                "error": None,
+            }
+    except Exception as exc:
+        return {
+            "status": "error",
+            "content": "",
+            "error": str(exc),
+        }
 
 
 def fetch_urls_in_text(teks):
@@ -83,12 +107,42 @@ def fetch_urls_in_text(teks):
 
     Mengembalikan tuple (konten_gabungan, daftar_url).
     """
+    hasil = fetch_urls_in_text_with_status(teks)
+    return hasil["konten"], hasil["urls"]
+
+
+def fetch_urls_in_text_with_status(teks):
+    """Temukan URL dalam teks, muat konten masing-masing halaman dengan status.
+
+    Mengembalikan dict:
+        {
+            "urls": ["https://..."],
+            "konten": "<gabungan teks dari yang berhasil>",
+            "per_url": [
+                {"url": "...", "status": "ok|error", "content": "...", "error": "..."}
+            ]
+        }
+    """
     urls = extract_urls(teks)
     if not urls:
-        return "", []
+        return {"urls": [], "konten": "", "per_url": []}
+
+    per_url = []
     bagian = []
     for url in urls:
-        konten = fetch_page_content(url)
-        if konten:
-            bagian.append(f"=== Konten dari {url} ===\n{konten}")
-    return "\n\n".join(bagian), urls
+        hasil = fetch_page_content_with_status(url)
+        entri = {
+            "url": url,
+            "status": hasil["status"],
+            "content": hasil["content"],
+            "error": hasil["error"],
+        }
+        per_url.append(entri)
+        if hasil["status"] == "ok" and hasil["content"]:
+            bagian.append(f"=== Konten dari {url} ===\n{hasil['content']}")
+
+    return {
+        "urls": urls,
+        "konten": "\n\n".join(bagian),
+        "per_url": per_url,
+    }

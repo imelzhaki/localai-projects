@@ -87,7 +87,7 @@ chat-sample/
 pytest tests/ -v
 ```
 
-Harapan: 15 tes lulus (3 history + 2 ollama_client + 4 app + 6 web_fetcher).
+Harapan: 23 tes lulus (3 history + 2 ollama_client + 6 app + 12 web_fetcher).
 
 ## Troubleshooting
 
@@ -96,7 +96,9 @@ Harapan: 15 tes lulus (3 history + 2 ollama_client + 4 app + 6 web_fetcher).
 | Ollama tidak terhubung | Jalankan `ollama serve` terlebih dahulu |
 | Model `llama3.2:3b` tidak ditemukan | Jalankan `ollama pull llama3.2:3b` |
 | `streamlit` tidak dikenali | Jalankan `pip install -r requirements.txt` |
-| Konten halaman web tidak terbaca | Pastikan URL dapat diakses dan mengembalikan HTML; beberapa situs memblokir pengambilan otomatis. Aplikasi akan menampilkan peringatan dan melanjutkan tanpa konten web. |
+| Konten halaman web tidak terbaca | Pastikan URL dapat diakses dan mengembalikan HTML. Beberapa situs (mis. detik.com) memblokir pengambilan otomatis melalui User-Agent atau membatasi akses. Aplikasi akan menampilkan peringatan per URL dengan alasan kesalahan dan melanjutkan respons tanpa konten web. |
+| URL tertentu gagal dibuka | Lihat pesan peringatan yang menunjukkan URL mana yang gagal dan alasan kesalahannya (mis. timeout, koneksi ditolak, atau bukan HTML). Coba URL lain atau buka situs tersebut langsung di browser. |
+| Beberapa URL, sebagian gagal | Aplikasi menampilkan konten dari URL yang berhasil dan peringatan untuk URL yang gagal. Model akan menjawab berdasarkan konten yang tersedia. |
 
 ## Lisensi
 

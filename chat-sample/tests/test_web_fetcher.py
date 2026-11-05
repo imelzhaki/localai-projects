@@ -3,7 +3,13 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from web_fetcher import extract_urls, fetch_page_content, fetch_urls_in_text
+from web_fetcher import (
+    extract_urls,
+    fetch_page_content,
+    fetch_page_content_with_status,
+    fetch_urls_in_text,
+    fetch_urls_in_text_with_status,
+)
 
 
 def test_extract_urls_single(monkeypatch):
@@ -194,3 +200,93 @@ def test_fetch_urls_in_text_some_fail(monkeypatch):
     assert urls == ["https://berhasil.com", "https://gagal.com"]
     assert "Hanya yang berhasil" in content
     assert "gagal.com" not in content
+
+
+def test_fetch_page_content_returns_status_dict(monkeypatch):
+    """fetch_page_content_with_status mengembalikan dict dengan status dan error."""
+
+    class FakeResp:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        @property
+        def headers(self):
+            class H:
+                def get(self, key, default=""):
+                    return "text/html"
+
+            return H()
+
+        def read(self):
+            return b"<html><body><p>ok</p></body></html>"
+
+    monkeypatch.setattr(
+        "web_fetcher.urllib.request.urlopen", lambda *a, **k: FakeResp()
+    )
+
+    hasil = fetch_page_content_with_status("https://example.com")
+    assert hasil["status"] == "ok"
+    assert "ok" in hasil["content"]
+    assert hasil["error"] is None
+
+
+def test_fetch_page_content_returns_error_on_failure(monkeypatch):
+    """fetch_page_content_with_status mengembalikan status error saat gagal."""
+
+    monkeypatch.setattr(
+        "web_fetcher.urllib.request.urlopen",
+        lambda *a, **k: (_ for _ in ()).throw(Exception("Koneksi ditolak")),
+    )
+
+    hasil = fetch_page_content_with_status("https://invalid.com")
+    assert hasil["status"] == "error"
+    assert hasil["content"] == ""
+    assert "Koneksi ditolak" in hasil["error"]
+
+
+def test_fetch_urls_in_text_returns_per_url_status(monkeypatch):
+    """fetch_urls_in_text_with_status mengembalikan status per URL."""
+
+    class FakeResp:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        @property
+        def headers(self):
+            class H:
+                def get(self, key, default=""):
+                    return "text/html"
+
+            return H()
+
+        def read(self):
+            return b"<html><body><p>ok</p></body></html>"
+
+    panggilan = [0]
+
+    def fake_urlopen(*a, **k):
+        panggilan[0] += 1
+        if panggilan[0] == 2:
+            raise Exception("Timeout")
+        return FakeResp()
+
+    monkeypatch.setattr(
+        "web_fetcher.urllib.request.urlopen", fake_urlopen
+    )
+
+    hasil = fetch_urls_in_text_with_status(
+        "Baca https://a.com dan https://b.com"
+    )
+    assert hasil["urls"] == ["https://a.com", "https://b.com"]
+    assert len(hasil["per_url"]) == 2
+    assert hasil["per_url"][0]["url"] == "https://a.com"
+    assert hasil["per_url"][0]["status"] == "ok"
+    assert hasil["per_url"][1]["url"] == "https://b.com"
+    assert hasil["per_url"][1]["status"] == "error"
+    assert "Timeout" in hasil["per_url"][1]["error"]
