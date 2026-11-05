@@ -91,26 +91,17 @@ def handle_user_input():
 
         if sukses:
             st.info(f"Membuka {len(sukses)} halaman: {', '.join(u['url'] for u in sukses)}")
-            konten_tergabung = "\n\n".join(
-                f"=== {u['url']} ===\n{u['content']}" for u in sukses
-            )
+            # Ganti setiap URL dalam prompt dengan konten yang di-fetch,
+            # sehingga LLM menerima pertanyaan yang sudah berisi isi halaman web
+            konten_dengan_isi = prompt
+            for u in sukses:
+                konten_dengan_isi = konten_dengan_isi.replace(u["url"], u["content"])
             logger.info(
-                "Konten web berhasil diambil dari %d URL, total panjang: %d karakter",
+                "URL diganti dengan konten web dari %d URL, total panjang: %d karakter",
                 len(sukses),
-                len(konten_tergabung),
+                len(konten_dengan_isi),
             )
-            # Sisipkan konten web ke dalam pesan user dengan instruksi paksa
-            # agar model menggunakan konten web, bukan data latihnya sendiri
-            user_message["content"] = (
-                f"{prompt}\n\n"
-                "=== KONTEN WEB (Gunakan ini sebagai sumber jawaban) ===\n"
-                f"{konten_tergabung}\n"
-                "=== AKHIR KONTEN WEB ===\n\n"
-                "INSTRUKSI PENTING: Jawab pertanyaan di atas HANYA berdasarkan "
-                "konten web yang disediakan di atas. Jangan menggunakan pengetahuan "
-                "sendiri atau data latih Anda. Jika jawaban tidak ada dalam konten web, "
-                "katakan bahwa informasi tidak tersedia dalam halaman web tersebut."
-            )
+            user_message["content"] = konten_dengan_isi
             # Perbarui pesan user di session state agar konten tersimpan
             st.session_state.messages[-1] = user_message
 

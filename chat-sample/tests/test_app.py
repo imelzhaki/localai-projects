@@ -77,11 +77,15 @@ def test_handle_user_input_sisipkan_konteks_url(monkeypatch):
     app.handle_user_input()
 
     assert len(kirim_ke_model) >= 1
-    # Konten web disisipkan ke pesan user (bukan system message)
+    # URL diganti dengan konten web di dalam pesan user (bukan system message)
     user_msgs = [m for m in kirim_ke_model if m["role"] == "user"]
     assert len(user_msgs) >= 1
     assert "Konten tiruan dari contoh.com" in user_msgs[0]["content"]
-    assert "Baca https://contoh.com untuk info" in user_msgs[0]["content"]
+    # URL asli telah diganti dengan konten, tidak boleh masih ada
+    assert "https://contoh.com" not in user_msgs[0]["content"]
+    # Teks asli prompt (tanpa URL) masih utuh
+    assert "Baca" in user_msgs[0]["content"]
+    assert "untuk info" in user_msgs[0]["content"]
     assert all(m["role"] != "system" for m in kirim_ke_model)
 
 
