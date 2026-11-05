@@ -125,16 +125,21 @@ def handle_user_input():
             if geometry_req.shape == "segitiga":
                 dims = geometry_req.parameters.get("dimensions", [])
                 if len(dims) >= 3:
-                    fig = create_triangle_from_sides(dims[0], dims[1], dims[2])
+                    # Ambil 3 angka terakhir sebagai dimensi sisi, karena
+                    # angka di awal kalimat seringkali adalah jumlah sisi
+                    # (contoh: "2 sisi masing2 2 cm dan 5 cm" -> [2,2,2,5],
+                    # dimensi sebenarnya adalah [2,2,5]).
+                    a, b, c = dims[-3:]
+                    fig = create_triangle_from_sides(a, b, c)
                     if fig is None:
                         st.warning(
                             f"⚠️ Tidak dapat menggambar segitiga dengan sisi "
-                            f"{dims[0]}, {dims[1]}, {dims[2]}. "
+                            f"{a}, {b}, {c}. "
                             f"Ketiga sisi harus memenuhi ketaksamaan segitiga: "
                             f"jumlah dua sisi manapun harus lebih besar dari sisi ketiga."
                         )
                     else:
-                        st.caption(f"📐 Segitiga dengan sisi: {dims[0]}, {dims[1]}, {dims[2]}")
+                        st.caption(f"📐 Segitiga dengan sisi: {a}, {b}, {c}")
                         st.plotly_chart(fig, use_container_width=True)
                 else:
                     points = default_points_for_shape("segitiga")

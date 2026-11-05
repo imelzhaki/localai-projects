@@ -85,3 +85,17 @@ def test_parse_geometry_request_segitiga_dengan_dimensi():
     assert req.action == "gambar"
     assert req.shape == "segitiga"
     assert req.parameters.get("dimensions") == [1.0, 2.0, 3.0]
+
+
+def test_extract_numbers_ambil_3_angka_terakhir():
+    # "2 sisi masing2 2 cm dan 5 cm" -> [2, 2, 2, 5], dimensi sebenarnya [2, 2, 5]
+    nums = extract_numbers("buatkan gambar segitiga dengan 2 sisi masing2 2 cm dan 5 cm")
+    assert nums == [2.0, 2.0, 2.0, 5.0]
+    assert nums[-3:] == [2.0, 2.0, 5.0]
+
+
+def test_parse_geometry_request_segitiga_2_sisi_2cm_dan_5cm():
+    req = parse_geometry_request("buatkan gambar segitiga dengan 2 sisi masing2 2 cm dan 5 cm")
+    assert req.action == "gambar"
+    assert req.shape == "segitiga"
+    assert req.parameters.get("dimensions") == [2.0, 2.0, 2.0, 5.0]
