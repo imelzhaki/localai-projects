@@ -81,9 +81,20 @@ def test_create_sphere_figure_has_title_with_radius():
 
 
 def test_create_triangle_from_sides_returns_go_figure():
-    fig = create_triangle_from_sides(1.0, 2.0, 3.0)
+    fig = create_triangle_from_sides(3.0, 4.0, 5.0)
     assert isinstance(fig, go.Figure)
     assert len(fig.data) > 0
+
+
+def test_create_triangle_from_sides_invalid_returns_none():
+    # 1 + 2 = 3, tidak memenuhi ketaksamaan segitiga (harus lebih besar)
+    assert create_triangle_from_sides(1.0, 2.0, 3.0) is None
+    # 2 + 3 = 5, juga degradasi
+    assert create_triangle_from_sides(2.0, 3.0, 5.0) is None
+    # Sisi negatif
+    assert create_triangle_from_sides(-1.0, 2.0, 3.0) is None
+    # Sisi nol
+    assert create_triangle_from_sides(0.0, 2.0, 3.0) is None
 
 
 def test_create_triangle_from_sides_has_three_points():

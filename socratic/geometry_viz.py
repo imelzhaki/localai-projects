@@ -13,18 +13,26 @@ def create_triangle_from_sides(a: float, b: float, c: float):
 
     Menempatkan sisi c pada sumbu x dari (0,0) ke (c,0), lalu menghitung
     titik ketiga menggunakan hukum kosinus.
+
+    Mengembalikan None jika sisi-sisi tidak memenuhi ketaksamaan segitiga
+    (a + b > c, a + c > b, b + c > a), sehingga tidak membentuk segitiga
+    yang valid (bukan garis lurus atau titik tunggal).
     """
     import math
+
+    # Validasi ketaksamaan segitiga (strict, non-degenerate)
+    if a <= 0 or b <= 0 or c <= 0:
+        return None
+    if a + b <= c or a + c <= b or b + c <= a:
+        return None
 
     # Titik A di (0,0), Titik B di (c, 0)
     # Titik C pada jarak a dari A dan jarak b dari B
     x = (a**2 + c**2 - b**2) / (2 * c)
     y_squared = a**2 - x**2
     if y_squared < 0:
-        # Segitiga tidak valid (sisi tidak memenuhi ketidaksamaan segitiga)
-        y = 0.0
-    else:
-        y = math.sqrt(y_squared)
+        return None
+    y = math.sqrt(y_squared)
 
     points = [(0, 0), (c, 0), (x, y)]
     return create_triangle_figure(points)
