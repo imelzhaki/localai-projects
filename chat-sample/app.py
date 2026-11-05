@@ -72,6 +72,7 @@ def handle_user_input():
             assistant_message = build_assistant_message(response)
             st.session_state.messages.append(assistant_message)
             save_history(st.session_state.messages)
+            logger.info("Ringkasan disimpan ke riwayat percakapan")
         return
 
     user_message = build_user_message(prompt)
