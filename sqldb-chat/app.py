@@ -1,8 +1,17 @@
 import logging
+from pathlib import Path
+
 import streamlit as st
 
+from database import DB_PATH, init_db
 from history import load_history, save_history
-from ollama_client import chat_with_tools, TOOLS
+from ollama_client import generate_sql
+from schema import build_schema_docs
+from retrieval import build_index, retrieve_schema_docs
+from fewshot import get_fewshot_examples
+from validation import validate_sql
+from critic import critique_sql
+from execution import execute_select
 
 logger = logging.getLogger(__name__)
 
@@ -20,14 +29,96 @@ def initialize_history():
         st.session_state.messages = load_history()
 
 
+def initialize_schema():
+    """Inisialisasi skema dan indeks retrieval (dipanggil dari main)."""
+    if "schema_docs" not in st.session_state:
+        init_db()
+        st.session_state.schema_docs = build_schema_docs()
+        build_index(st.session_state.schema_docs, persist_dir="data/chroma_db")
+        logger.info("Indeks skema dibangun di startup")
+    if "fewshot_examples" not in st.session_state:
+        st.session_state.fewshot_examples = get_fewshot_examples()
+        logger.info("Contoh few-shot dimuat: %d", len(st.session_state.fewshot_examples))
+
+
+def _get_schema_docs():
+    """Dapatkan dokumen skema dari session state, atau bangun jika belum ada."""
+    try:
+        if "schema_docs" in st.session_state:
+            return st.session_state["schema_docs"]
+    except Exception:
+        pass
+    return build_schema_docs()
+
+
+def _get_fewshot_examples():
+    """Dapatkan contoh few-shot dari session state, atau muat jika belum ada."""
+    try:
+        if "fewshot_examples" in st.session_state:
+            return st.session_state["fewshot_examples"]
+    except Exception:
+        pass
+    return get_fewshot_examples()
+
+
 def display_history():
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
 
+def process_question(question):
+    """Jalankan pipeline lengkap: retrieve → generate → validate → critic → execute.
+
+    Returns:
+        Dict dengan kunci: question, sql, rows, error, corrected.
+    """
+    schema_docs = _get_schema_docs()
+    fewshot_examples = _get_fewshot_examples()
+
+    # 1. Retrieve skema yang relevan
+    retrieved = retrieve_schema_docs(question, top_k=3)
+
+    # 2. Generate SQL via llama3.2:3b
+    sql = generate_sql(question, schema_docs, fewshot_examples)
+
+    # 3. Validasi sintaks dengan SQLGlot
+    validation = validate_sql(sql)
+    if not validation["valid"]:
+        return {
+            "question": question,
+            "sql": sql,
+            "rows": None,
+            "error": validation["error"],
+            "corrected": False,
+        }
+
+    # 4. Critik kedua (semantic review)
+    criticism = critique_sql(question, sql, retrieved)
+    final_sql = criticism["sql"]
+
+    # 5. Eksekusi read-only
+    exec_result = execute_select(final_sql)
+    if not exec_result["ok"]:
+        return {
+            "question": question,
+            "sql": final_sql,
+            "rows": None,
+            "error": exec_result["error"],
+            "corrected": criticism["corrected"],
+        }
+
+    return {
+        "question": question,
+        "sql": final_sql,
+        "rows": exec_result["rows"],
+        "error": None,
+        "corrected": criticism["corrected"],
+    }
+
+
 def handle_user_input():
-    prompt = st.chat_input("Ketik pesan...")
+    prompt = st.chat_input("Ketik pertanyaan (Bahasa Indonesia atau Inggris)...")
     if not prompt:
         return
 
@@ -47,26 +138,35 @@ def handle_user_input():
 
     with st.chat_message("assistant"):
         try:
-            teks, panggilan = chat_with_tools(
-                list(st.session_state.messages), tools=TOOLS
-            )
-            if panggilan:
-                for nama, args in panggilan:
-                    st.info(f"🔧 Alat dipanggil: `{nama}` dengan argumen `{args}`")
-            response = st.write_stream([teks]) if teks else ""
+            result = process_question(prompt)
+
+            if result["error"]:
+                st.error(f"Kesalahan: {result['error']}")
+                response = f"Kesalahan: {result['error']}"
+            elif result["rows"] is None or len(result["rows"]) == 0:
+                st.info("Tidak ada data yang ditemukan.")
+                response = "Tidak ada data yang ditemukan."
+            else:
+                with st.expander("Lihat kueri SQL", expanded=False):
+                    st.code(result["sql"], language="sql")
+                if result["corrected"]:
+                    st.info("🔍 SQL telah dikoreksi oleh kritik skema.")
+
+                st.dataframe(result["rows"])
+                response = f"Ditemukan {len(result['rows'])} baris data."
+
         except Exception as exc:
             logger.error("Gagal memproses pesan: %s", exc)
             st.error(f"Gagal memproses pesan: {exc}")
-            response = ""
+            response = f"Gagal memproses pesan: {exc}"
 
     if response:
         assistant_message = build_assistant_message(response)
         st.session_state.messages.append(assistant_message)
         save_history(st.session_state.messages)
 
-    # Disclaimer verifikasi bisnis
     st.caption(
-        "⚠️ Data dihasilkan oleh AI berdasarkan hasil alat database. "
+        "⚠️ Data dihasilkan oleh AI berdasarkan skema database. "
         "Selalu verifikasi terhadap database asli sebelum membuat keputusan bisnis."
     )
 
@@ -76,9 +176,10 @@ def main():
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
-    st.set_page_config(page_title="DBChat", page_icon="💬")
-    st.title("DBChat — Agent Database Kantor (llama3.2:3b)")
+    st.set_page_config(page_title="SQLDB-Chat", page_icon="🗄️")
+    st.title("SQLDB-Chat — Text-to-SQL dengan Pemahaman Skema (llama3.2:3b)")
     initialize_history()
+    initialize_schema()
     display_history()
     handle_user_input()
 

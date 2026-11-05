@@ -1,56 +1,78 @@
-# DBChat — Agent Database Kantor (Llama 3.2 3B)
+# SQLDB-Chat — Text-to-SQL dengan Pemahaman Skema (Llama 3.2 3B)
 
-DBChat adalah jembatan antara pengguna non-coder dan database internal kantor. Model (Llama 3.2 3B melalui Ollama) bertindak sebagai penerjemah perintah harian dalam Bahasa Indonesia menjadi **panggilan fungsi (function call)** yang dieksekusi terhadap database SQLite read-only.
+SQLDB-Chat adalah aplikasi Text-to-SQL yang menerjemahkan pertanyaan bahasa alami (Bahasa Indonesia atau Inggris) menjadi kueri SQL yang dieksekusi terhadap database SQLite read-only. Didesain khusus untuk model kecil (llama3.2:3b) di mana **pemahaman skema** adalah tantangan terbesar — bukan sintaks SQL.
 
-Setiap jawaban dihasilkan **melalui teknik function call** — model tidak menebak atau mengarang data, melainkan memanggil alat (tool) yang mengakses database secara langsung. Hasil alat kemudian dikembalikan ke model untuk disajikan kepada user. Ini memastikan data keuangan dan bisnis akurat dan terverifikasi.
+Alih-alih function calling, SQLDB-Chat menggunakan pipeline **schema comprehension**:
+
+1. **Retrieve skema** — Ambil dokumen skema yang relevan dari indeks ChromaDB (dibangun dari SQLAlchemy Inspector metadata, bukan DDL mentah).
+2. **Generate SQL** — llama3.2:3b menghasilkan SQL dengan system prompt bilingual, skema yang diambil, dan contoh few-shot.
+3. **Validasi SQLGlot** — Validasi sintaks dan dialek SQLite, enforce SELECT-only.
+4. **Critik LLM** — Kedua llama3.2:3b melakukan review semantik SQL terhadap skema (nama tabel, kolom, join).
+5. **Eksekusi read-only** — Jalankan SQL terhadap SQLite dalam mode read-only (`mode=ro`).
+6. **Render hasil** — Tampilkan SQL dan hasil kueri di Streamlit UI.
 
 ## Fitur
 
-- **Natural language to function call** — Ketik perintah dalam Bahasa Indonesia, model menerjemahkannya menjadi panggilan fungsi (tool call) yang dieksekusi terhadap database.
-- **Native tool calling** — Menggunakan Ollama native tool calling yang stabil untuk otomatisasi perangkat lunak.
-- **Read-only by design** — Koneksi SQLite dibuka dalam mode read-only (`mode=ro`), sehingga database tidak dapat dimodifikasi melalui aplikasi.
+- **Schema comprehension pipeline** — Retrieve → Generate → Validate → Critic → Execute, tanpa function calling.
+- **Metadata skema, bukan DDL mentah** — Setiap tabel dilengkapi purpose, deskripsi kolom, dan value legend (mis. `kategori: Elektronik/Aksesori/Komputer`, `status: Lunas`).
+- **Few-shot bilingual** — 18 contoh Q/SQL dalam Bahasa Indonesia dan Inggris untuk pola domain ERP.
+- **SQLGlot validator** — Gate sintaks SQLite sebelum eksekusi, hanya SELECT yang diizinkan.
+- **Second-pass critic** — llama3.2:3b meninjau SQL terhadap skema dan memperbaiki kesalahan nama tabel/kolom/join.
+- **Read-only by design** — Koneksi SQLite dibuka dalam mode read-only (`mode=ro`).
 - **Riwayat percakapan** — Riwayat chat disimpan ke `data/history.json` dan dapat direset dengan perintah `/reset` atau `/clear`.
-- **Streamlit UI** — Antarmuka chat sederhana berbasis web.
-- **Anti-halucinasi** — System prompt dengan aturan ketat: jawab hanya berdasarkan hasil alat, jangan mengarang data, verifikasi terhadap database asli sebelum keputusan bisnis.
+- **Streamlit UI** — Antarmuka chat sederhana berbasis web dengan ekspander untuk melihat SQL yang dihasilkan.
 
 ## Struktur Project
 
 ```
-db-chat/
-├── app.py                 # Streamlit UI (chat, /reset, /clear, tool result display)
-├── database.py            # Layer database: read-only SQLite, skema, seed data, execute_query
-├── tools.py               # 15 fungsi read-only + skema alat Ollama + execute_tool_map
-├── ollama_client.py       # chat_with_tools() (loop round-trip function calling) + execute_tool()
+sqldb-chat/
+├── app.py                 # Streamlit UI (chat, /reset, /clear, SQL expander, dataframe)
+├── database.py            # Layer database: read-only SQLite, skema, seed data, init_db
+├── schema.py              # SQLAlchemy Inspector → dokumen metadata per tabel (purpose, columns, value_legend)
+├── retrieval.py           # sentence-transformers embeddings → ChromaDB → retrieve_schema_docs(question, top_k)
+├── fewshot.py             # 18 contoh Q/SQL bilingual (id+en), get_fewshot_examples()
+├── validation.py          # SQLGlot dialect gate, validate_sql() enforces SELECT-only
+├── critic.py              # Second llama3.2:3b semantic review, critique_sql()
+├── execution.py           # Read-only SELECT execution, execute_select() dengan mode=ro
+├── ollama_client.py       # generate_sql(question, schema_docs, fewshot_examples) — ganti chat_with_tools
 ├── history.py             # load_history / save_history ke data/history.json
+├── tools.py               # (legacy) 15 fungsi read-only dari db-chat, tidak lagi digunakan oleh app.py
 ├── requirements.txt       # Dependensi Python
 ├── .gitignore             # Git ignore
 ├── README.md              # Dokumentasi ini
-├── PROMPTS.md             # Panduan prompt untuk operator (34+ prompt)
+├── PROMPTS.md             # Panduan prompt untuk operator (Text-to-SQL)
 ├── data/
-│   ├── dbchat.db          # Database SQLite (dihasilkan oleh init_db)
-│   └── history.json       # Riwayat percakapan (dihasilkan oleh aplikasi)
+│   ├── sqldb-chat.db      # Database SQLite (dihasilkan oleh init_db)
+│   ├── history.json       # Riwayat percakapan (dihasilkan oleh aplikasi)
+│   └── chroma_db/         # Indeks ChromaDB untuk retrieval skema
 └── tests/
-    ├── test_database.py   # 6 TDD tests (database layer)
-    ├── test_tools.py      # 22 TDD tests (tools layer)
+    ├── test_schema.py     # 3 TDD tests (schema layer)
+    ├── test_retrieval.py  # 2 TDD tests (retrieval layer)
+    ├── test_fewshot.py    # 4 TDD tests (few-shot layer)
+    ├── test_validation.py # 6 TDD tests (validation layer)
+    ├── test_execution.py  # 4 TDD tests (execution layer)
+    ├── test_critic.py     # 3 TDD tests (critic layer)
     ├── test_ollama_client.py  # 2 TDD tests (ollama client)
+    ├── test_app.py        # 2 TDD tests (Streamlit app process_question)
+    ├── test_database.py   # 6 TDD tests (database layer)
+    ├── test_tools.py      # 22 TDD tests (legacy tools layer)
     ├── test_history.py    # 3 TDD tests (history layer)
-    ├── test_app.py        # 4 TDD tests (Streamlit app)
     └── test_operator_prompts.py  # 38 TDD tests (operator prompts)
 ```
 
-Total: 82 tes, semuanya lolos.
+Total: 102 tes, semuanya lolos.
 
 ## Persyaratan
 
 - Python 3.10+
-- Ollama terinstal dan berjalan (model `llama3.2:3b` di-pull, disarankan `llama3.2:7b` atau lebih besar untuk function call yang lebih andal pada data keuangan)
-- Streamlit, ollama (Python client)
+- Ollama terinstal dan berjalan (model `llama3.2:3b` di-pull)
+- Streamlit, ollama (Python client), sqlalchemy, sqlglot, chromadb, sentence-transformers
 
 ## Instalasi
 
 ```bash
 # Masuk ke direktori project
-cd C:\Dev\Research\localai-projects\db-chat
+cd C:\Dev\Research\localai-projects\sqldb-chat
 
 # Install dependensi
 pip install -r requirements.txt
@@ -64,54 +86,35 @@ streamlit run app.py
 
 ## Contoh Penggunaan
 
-Ketik perintah dalam Bahasa Indonesia di kotak chat. Setiap permintaan diproses **melalui teknik function call**:
+Ketik pertanyaan dalam Bahasa Indonesia atau Inggris di kotak chat. Setiap permintaan diproses melalui pipeline schema comprehension:
 
-| Perintah | Fungsi yang dipanggil |
-|----------|----------------------|
-| "Tolong carikan data penjualan produk kategori Elektronik bulan lalu." | `get_sales_data(category="Elektronik", month="last")` |
-| "Tampilkan data customer dengan ID 5." | `get_customer(customer_id=5)` |
-| "Berapa jumlah customer yang ada?" | `get_database_stats()` |
-| "List semua produk kategori Elektronik" | `list_products(kategori="Elektronik")` |
-| "Produk dengan stok di bawah 10" | `list_products(stok_max=10)` |
-| "Detail produk Laptop Asus ROG" | `get_product(nama="Laptop Asus ROG")` |
-| "Pesanan penjualan yang sudah lunas" | `get_sales_order(status="Lunas")` |
-| "Tampilkan daftar supplier." | `list_suppliers()` |
-| "Statistik ringkasan database" | `get_database_stats()` |
+| Pertanyaan | SQL yang dihasilkan |
+|------------|---------------------|
+| "Tampilkan pelanggan di Jakarta." | `SELECT * FROM Customer WHERE kota = 'Jakarta';` |
+| "Show all customers." | `SELECT * FROM Customer;` |
+| "Berapa jumlah pelanggan?" | `SELECT COUNT(*) AS jumlah_pelanggan FROM Customer;` |
+| "Tampilkan produk kategori Elektronik." | `SELECT * FROM Product WHERE kategori = 'Elektronik';` |
+| "Tampilkan pesanan penjualan untuk Budi Santoso." | `SELECT so.* FROM Sales_Order so JOIN Customer c ON so.customer_id = c.customer_id WHERE c.nama = 'Budi Santoso';` |
 | "/reset" atau "/clear" | Hapus riwayat percakapan |
 
 Lihat daftar lengkap prompt di `PROMPTS.md`.
 
 ## Arsitektur
 
-1. **app.py** — Streamlit terima input user, memanggil `chat_with_tools`, menampilkan hasil dan panggilan fungsi.
-2. **ollama_client.py** — `chat_with_tools()` mengirim pesan ke Ollama dengan skema fungsi. Jika model meminta function call, dieksekusi melalui `execute_tool()` dan hasilnya dikembalikan ke model untuk jawaban akhir.
-3. **tools.py** — 15 fungsi read-only + `execute_tool_map` untuk dispatch function call ke fungsi yang sesuai.
-4. **database.py** — Koneksi SQLite read-only, inisialisasi skema dan data sampel, `execute_query` yang menolak query non-SELECT.
-5. **history.py** — Simpan/muat riwayat chat ke `data/history.json`.
-
-## Alat yang Tersedia (15 fungsi)
-
-| Fungsi | Deskripsi |
-|--------|-----------|
-| `get_sales_data(category, month)` | Data penjualan per kategori dan bulan. |
-| `get_customer(customer_id, nama, kota)` | Detail customer berdasarkan ID, nama, atau kota. |
-| `get_product(product_id, nama, kategori, stok_max, harga_max)` | Detail produk dengan filter ID, nama, kategori, stok, atau harga. |
-| `get_sales_order(order_id, customer_id, rentang_tanggal, status)` | Pesanan penjualan dengan filter ID, pelanggan, tanggal, atau status. |
-| `get_purchase_order(order_id, supplier_id, rentang_tanggal)` | Pesanan pembelian dengan filter ID, supplier, atau tanggal. |
-| `get_supplier(supplier_id, nama)` | Detail supplier berdasarkan ID atau nama. |
-| `list_customers()` | Daftar semua customer. |
-| `list_sales_orders()` | Daftar semua pesanan penjualan. |
-| `list_purchase_orders()` | Daftar semua pesanan pembelian. |
-| `list_suppliers()` | Daftar semua supplier. |
-| `list_products(kategori, stok_max, harga_max)` | Daftar semua produk dengan opsi filter kategori, stok, atau harga. |
-| `get_sales_order_items(order_id)` | Detail item dalam pesanan penjualan. |
-| `get_sales_by_product(nama_produk, month)` | Data penjualan untuk produk tertentu. |
-| `get_database_stats()` | Statistik ringkasan: jumlah baris per tabel. |
-| `get_sales_years()` | Daftar tahun yang terdapat data penjualan. |
+1. **app.py** — Streamlit terima input user, menjalankan `process_question()` (pipeline lengkap), menampilkan SQL dan hasil kueri.
+2. **schema.py** — `build_schema_docs()` introspeksi SQLite via SQLAlchemy Inspector, membuat dokumen metadata per tabel (bukan DDL mentah).
+3. **retrieval.py** — `build_index()` dan `retrieve_schema_docs()` menggunakan sentence-transformers + ChromaDB untuk pencarian skema yang relevan.
+4. **fewshot.py** — `get_fewshot_examples()` menyediakan 18 contoh Q/SQL bilingual untuk few-shot prompting.
+5. **ollama_client.py** — `generate_sql()` membangun prompt bilingual dengan skema + few-shot, memanggil llama3.2:3b (temperature 0.1), mengekstrak SQL.
+6. **validation.py** — `validate_sql()` menggunakan SQLGlot (dialek SQLite) untuk validasi sintaks, enforce SELECT-only.
+7. **critic.py** — `critique_sql()` memanggil llama3.2:3b untuk review semantik SQL terhadap skema yang diambil.
+8. **execution.py** — `execute_select()` menjalankan SQL SELECT terhadap SQLite dalam mode read-only.
+9. **database.py** — Koneksi SQLite read-only, inisialisasi skema dan data sampel.
+10. **history.py** — Simpan/muat riwayat chat ke `data/history.json`.
 
 ## Panduan Prompt untuk Operator
 
-Lihat `PROMPTS.md` untuk 34+ prompt contoh yang terorganisir menurut domain bisnis (Customer, Produk, Pesanan Penjualan, Pesanan Pembelian, Supplier, Analitik Penjualan), beserta prompt yang harus dihindari.
+Lihat `PROMPTS.md` untuk panduan prompt Text-to-SQL.
 
 ## Lisensi
 

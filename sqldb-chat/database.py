@@ -4,7 +4,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-DB_PATH = Path("data/dbchat.db")
+DB_PATH = Path("data/sqldb-chat.db")
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS Customer (
