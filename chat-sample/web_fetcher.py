@@ -1,6 +1,9 @@
+import logging
 import re
 import urllib.request
 from html.parser import HTMLParser
+
+logger = logging.getLogger(__name__)
 
 
 _URL_PATTERN = re.compile(r"https?://\S+", re.IGNORECASE)
@@ -95,6 +98,7 @@ def fetch_page_content_with_status(url, timeout=10):
                 "error": None,
             }
     except Exception as exc:
+        logger.error("Gagal mengambil %s: %s", url, exc)
         return {
             "status": "error",
             "content": "",
@@ -140,6 +144,21 @@ def fetch_urls_in_text_with_status(teks):
         per_url.append(entri)
         if hasil["status"] == "ok" and hasil["content"]:
             bagian.append(f"=== Konten dari {url} ===\n{hasil['content']}")
+
+    sukses = [u for u in per_url if u["status"] == "ok"]
+    gagal = [u for u in per_url if u["status"] == "error"]
+
+    logger.info(
+        "Selesai memproses %d URL: %d sukses, %d gagal",
+        len(urls),
+        len(sukses),
+        len(gagal),
+    )
+    for entri in per_url:
+        if entri["status"] == "ok":
+            logger.debug("URL %s berhasil diambil, panjang konten: %d", entri["url"], len(entri["content"]))
+        else:
+            logger.warning("URL %s gagal diambil: %s", entri["url"], entri["error"])
 
     return {
         "urls": urls,
