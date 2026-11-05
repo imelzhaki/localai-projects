@@ -94,6 +94,91 @@ def check_aggregate_in_where(sql):
     return False, None
 
 
+def validate_columns_against_schema(sql, schema_docs):
+    """Cek apakah setiap kolom yang direferensikan dengan alias tabel
+    (mis. c.kategori) sebenarnya ada pada tabel yang sesuai dalam skema.
+
+    SQLGlot hanya memvalidasi sintaks, bukan semantik skema. Fungsi ini
+    menangkap kesalahan seperti WHERE c.kategori = 'Elektronik' ketika
+    kolom kategori sebenarnya ada pada tabel Product, bukan Customer.
+
+    Args:
+        sql: String kueri SQL.
+        schema_docs: Daftar dokumen skema dari retrieval (dengan table,
+                     columns, value_legend).
+
+    Returns:
+        (bool, str|None): (True, pesan_error) jika ditemukan kolom yang
+        tidak sesuai dengan tabel alias-nya, (False, None) jika semua OK.
+    """
+    if not sql or not schema_docs:
+        return False, None
+
+    # Bangun map: alias -> nama tabel (original case), dan nama tabel -> daftar kolom
+    alias_to_table = {}
+    table_to_columns = {}
+
+    for doc in schema_docs:
+        table_name = doc["table"]
+        cols = set()
+        for col_desc in doc.get("columns", []):
+            # Format kolom: "nama_kolom: deskripsi"
+            col_name = col_desc.split(":")[0].strip()
+            cols.add(col_name.lower())
+        table_to_columns[table_name.lower()] = cols
+
+    # Ekstrak alias tabel dari FROM dan JOIN clauses
+    # Pola: FROM table alias / JOIN table alias / FROM table AS alias / JOIN table AS alias
+    table_alias_pattern = re.compile(
+        r"\b(?:FROM|JOIN)\s+(\w+)(?:\s+AS\s+(\w+))?(?:\s+(\w+))?",
+        re.IGNORECASE,
+    )
+    for match in table_alias_pattern.finditer(sql):
+        table_name = match.group(1)
+        as_alias = match.group(2)
+        plain_alias = match.group(3)
+
+        # Tentukan alias yang digunakan
+        if as_alias:
+            alias_to_table[as_alias.lower()] = table_name
+        elif plain_alias and plain_alias.upper() not in (
+            "WHERE", "ON", "AND", "OR", "GROUP", "ORDER", "LIMIT", "HAVING",
+        ):
+            alias_to_table[plain_alias.lower()] = table_name
+
+        # Tabel itu sendiri juga bisa menjadi alias (tanpa AS)
+        alias_to_table[table_name.lower()] = table_name
+
+    # Ekstrak semua referensi kolom dengan alias: alias.nama_kolom
+    aliased_column_pattern = re.compile(r"(\w+)\.(\w+)", re.IGNORECASE)
+    for match in aliased_column_pattern.finditer(sql):
+        alias = match.group(1).lower()
+        column = match.group(2).lower()
+
+        # Lewati kata kunci SQL yang tidakใช alias tabel
+        sql_keywords = {
+            "select", "from", "where", "and", "or", "join", "on", "as",
+            "group", "by", "order", "having", "limit", "sum", "count",
+            "min", "max", "avg", "extract", "strftime", "case", "when",
+            "then", "else", "end", "is", "null", "not", "in", "like",
+            "between", "asc", "desc", "distinct", "all", "any", "exists",
+        }
+        if alias in sql_keywords:
+            continue
+
+        if alias in alias_to_table:
+            table_lower = alias_to_table[alias].lower()
+            if table_lower in table_to_columns:
+                if column not in table_to_columns[table_lower]:
+                    return True, (
+                        f"Kolom '{column}' tidak ada pada tabel '{alias_to_table[alias]}' "
+                        f"(alias '{alias}'). Kolom yang tersedia pada "
+                        f"tabel ini: {', '.join(sorted(table_to_columns[table_lower]))}."
+                    )
+
+    return False, None
+
+
 def normalize_sql_for_sqlite(sql):
     """Konstruk SQL non-SQLite (mis. EXTRACT) ke ekuivalen SQLite.
 

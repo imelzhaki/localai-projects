@@ -6,8 +6,43 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from validation import (
     check_aggregate_in_where,
     normalize_sql_for_sqlite,
+    validate_columns_against_schema,
     validate_sql,
 )
+
+SCHEMA_DOCS = [
+    {
+        "table": "Customer",
+        "columns": [
+            "customer_id: ID pelanggan (primary key)",
+            "nama: Nama pelanggan",
+            "kota: Kota pelanggan",
+            "telepon: Nomor telepon pelanggan",
+            "email: Alamat email pelanggan",
+            "tanggal_gabung: Tanggal pelanggan bergabung",
+        ],
+    },
+    {
+        "table": "Product",
+        "columns": [
+            "product_id: ID produk (primary key)",
+            "nama: Nama produk",
+            "kategori: Kategori produk (Elektronik, Aksesori, Komputer)",
+            "harga: Harga jual produk",
+            "stok: Stok tersedia produk",
+        ],
+    },
+    {
+        "table": "Sales_Order",
+        "columns": [
+            "order_id: ID pesanan (primary key)",
+            "customer_id: ID pelanggan (foreign key ke Customer)",
+            "tanggal: Tanggal transaksi",
+            "total: Total nilai transaksi",
+            "status: Status transaksi (Lunas, dll.)",
+        ],
+    },
+]
 
 
 def test_validate_sql_accepts_valid_select():
@@ -140,5 +175,59 @@ def test_check_aggregate_in_where_no_where_clause():
 
 def test_check_aggregate_in_where_empty_string():
     bad, error = check_aggregate_in_where("")
+    assert bad is False
+    assert error is None
+
+
+def test_validate_columns_against_schema_wrong_table():
+    """c.kategori salah karena kategori ada pada Product, bukan Customer."""
+    sql = "SELECT SUM(so.total) FROM Sales_Order so JOIN Customer c ON so.customer_id = c.customer_id WHERE c.kategori = 'Elektronik';"
+    bad, error = validate_columns_against_schema(sql, SCHEMA_DOCS)
+    assert bad is True
+    assert error is not None
+    assert "kategori" in error
+    assert "Customer" in error
+
+
+def test_validate_columns_against_schema_correct_table():
+    """c.kota benar karena kota ada pada Customer."""
+    sql = "SELECT * FROM Customer c WHERE c.kota = 'Jakarta';"
+    bad, error = validate_columns_against_schema(sql, SCHEMA_DOCS)
+    assert bad is False
+    assert error is None
+
+
+def test_validate_columns_against_schema_unaliased_column():
+    """Kolom tanpa alias tidak dicek (tidak ada alias yang cocok)."""
+    sql = "SELECT * FROM Customer WHERE kota = 'Jakarta';"
+    bad, error = validate_columns_against_schema(sql, SCHEMA_DOCS)
+    assert bad is False
+    assert error is None
+
+
+def test_validate_columns_against_schema_product_kategori():
+    """p.kategori benar karena kategori ada pada Product."""
+    sql = "SELECT * FROM Product p WHERE p.kategori = 'Elektronik';"
+    bad, error = validate_columns_against_schema(sql, SCHEMA_DOCS)
+    assert bad is False
+    assert error is None
+
+
+def test_validate_columns_against_schema_unknown_column():
+    """c.nama_salah tidak ada pada Customer."""
+    sql = "SELECT * FROM Customer c WHERE c.nama_salah = 'Budi';"
+    bad, error = validate_columns_against_schema(sql, SCHEMA_DOCS)
+    assert bad is True
+    assert error is not None
+
+
+def test_validate_columns_against_schema_empty_sql():
+    bad, error = validate_columns_against_schema("", SCHEMA_DOCS)
+    assert bad is False
+    assert error is None
+
+
+def test_validate_columns_against_schema_empty_schema():
+    bad, error = validate_columns_against_schema("SELECT * FROM Customer c WHERE c.kota = 'Jakarta';", [])
     assert bad is False
     assert error is None

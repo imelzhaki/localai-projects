@@ -13,6 +13,7 @@ from validation import (
     validate_sql,
     normalize_sql_for_sqlite,
     check_aggregate_in_where,
+    validate_columns_against_schema,
 )
 from critic import critique_sql
 from execution import execute_select
@@ -123,6 +124,17 @@ def process_question(question):
             "sql": final_sql,
             "rows": None,
             "error": agg_error,
+            "corrected": criticism["corrected"],
+        }
+
+    # Cek apakah kolom dengan alias tabel ada pada tabel yang sesuai
+    col_bad, col_error = validate_columns_against_schema(final_sql, schema_docs)
+    if col_bad:
+        return {
+            "question": question,
+            "sql": final_sql,
+            "rows": None,
+            "error": col_error,
             "corrected": criticism["corrected"],
         }
 
