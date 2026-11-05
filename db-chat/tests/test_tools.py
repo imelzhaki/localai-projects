@@ -66,6 +66,17 @@ def test_get_supplier_by_id(tmp_path, monkeypatch):
     assert hasil["nama"] == "Toko Elektronik Jaya"
 
 
+def test_list_customers(tmp_path, monkeypatch):
+    db_path = tmp_path / "test.db"
+    monkeypatch.setattr("database.DB_PATH", db_path)
+    monkeypatch.setattr("tools.DB_PATH", db_path)
+    init_db()
+    hasil = tools.list_customers()
+    assert isinstance(hasil, list)
+    assert len(hasil) == 20
+    assert all("nama" in r and "kota" in r for r in hasil)
+
+
 def test_tools_schemas_are_valid():
     """Setiap alat dalam TOOLS memiliki nama, deskripsi, dan parameter."""
     for alat in tools.TOOLS:

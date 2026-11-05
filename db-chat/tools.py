@@ -154,6 +154,13 @@ def get_supplier(supplier_id=None, nama=None):
     return {}
 
 
+def list_customers():
+    """Daftar semua pelanggan (nama dan kota)."""
+    return execute_query(
+        "SELECT customer_id, nama, kota, telepon, email FROM Customer ORDER BY nama"
+    )
+
+
 # Peta nama alat ke fungsi, untuk dieksekusi oleh ollama_client
 execute_tool_map = {
     "get_sales_data": get_sales_data,
@@ -162,6 +169,7 @@ execute_tool_map = {
     "get_sales_order": get_sales_order,
     "get_purchase_order": get_purchase_order,
     "get_supplier": get_supplier,
+    "list_customers": list_customers,
 }
 
 
@@ -267,6 +275,18 @@ TOOLS = [
                     "supplier_id": {"type": "integer", "description": "ID supplier"},
                     "nama": {"type": "string", "description": "Nama supplier (parsial cocok)"},
                 },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_customers",
+            "description": "Daftar semua pelanggan (ID, nama, kota, telepon, email). Gunakan untuk pertanyaan yang meminta daftar lengkap pelanggan.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
                 "required": [],
             },
         },
