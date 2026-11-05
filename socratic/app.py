@@ -141,7 +141,15 @@ def handle_user_input():
                     else:
                         st.caption(f"📐 Segitiga dengan sisi: {a}, {b}, {c}")
                         st.plotly_chart(fig, use_container_width=True)
+                elif len(dims) > 0:
+                    # Ada angka tapi kurang dari 3: butuh 3 sisi untuk segitiga
+                    st.warning(
+                        f"⚠️ Untuk menggambar segitiga diperlukan 3 panjang sisi. "
+                        f"Anda hanya memberikan {len(dims)} angka: {dims}. "
+                        f"Silakan sebutkan panjang ketiga sisi."
+                    )
                 else:
+                    # Tidak ada angka sama sekali: gunakan titik default
                     points = default_points_for_shape("segitiga")
                     fig = create_triangle_figure(points)
                     st.plotly_chart(fig, use_container_width=True)

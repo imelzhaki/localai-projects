@@ -99,3 +99,10 @@ def test_parse_geometry_request_segitiga_2_sisi_2cm_dan_5cm():
     assert req.action == "gambar"
     assert req.shape == "segitiga"
     assert req.parameters.get("dimensions") == [2.0, 2.0, 2.0, 5.0]
+
+
+def test_parse_geometry_request_segitiga_hanya_2_dimensi():
+    req = parse_geometry_request("buatkan gambar segitiga dengan sisi 2 cm dan 5 cm")
+    assert req.action == "gambar"
+    assert req.shape == "segitiga"
+    assert req.parameters.get("dimensions") == [2.0, 5.0]
