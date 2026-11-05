@@ -28,6 +28,7 @@ SHAPE_KEYWORDS = {
     "segiempat": ("segiempat", "persegi", "persegi panjang", "belah ketupat"),
     "lingkaran": ("lingkaran", "circle"),
     "kubus": ("kubus", "balok", "3d", "tiga dimensi"),
+    "bola": ("bola", "sfera", "spher", "sphere"),
 }
 
 

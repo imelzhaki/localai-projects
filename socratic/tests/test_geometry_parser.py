@@ -30,6 +30,12 @@ def test_parse_geometry_request_kubus_3d():
     assert req.shape == "kubus"
 
 
+def test_parse_geometry_request_bola():
+    req = parse_geometry_request("gambarkan bola berdiameter 1 meter")
+    assert req.action == "gambar"
+    assert req.shape == "bola"
+
+
 def test_parse_geometry_request_tanpa_gambar_mengembalikan_kosong():
     req = parse_geometry_request("segitiga sama kaki adalah segitiga yang memiliki dua sisi sama panjang")
     assert req.action is None

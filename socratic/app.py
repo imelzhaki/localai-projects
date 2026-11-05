@@ -131,6 +131,9 @@ def handle_user_input():
             elif geometry_req.shape == "kubus":
                 fig = create_cube_figure()
                 st.plotly_chart(fig, use_container_width=True)
+            elif geometry_req.shape == "bola":
+                fig = create_sphere_figure(radius=0.5)
+                st.plotly_chart(fig, use_container_width=True)
 
 
 def render_geometry_visualizer():

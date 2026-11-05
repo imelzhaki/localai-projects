@@ -8,6 +8,7 @@ from geometry_viz import (
     create_quadrilateral_figure,
     create_circle_figure,
     create_cube_figure,
+    create_sphere_figure,
 )
 import plotly.graph_objects as go
 
@@ -62,3 +63,16 @@ def test_create_cube_figure_returns_go_figure_3d():
     # Scatter3d untuk 3D
     scatter3d_traces = [t for t in fig.data if isinstance(t, go.Scatter3d)]
     assert len(scatter3d_traces) >= 1
+
+
+def test_create_sphere_figure_returns_go_figure_3d():
+    fig = create_sphere_figure(radius=1.0)
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) > 0
+    scatter3d_traces = [t for t in fig.data if isinstance(t, go.Scatter3d)]
+    assert len(scatter3d_traces) >= 1
+
+
+def test_create_sphere_figure_has_title_with_radius():
+    fig = create_sphere_figure(radius=0.5)
+    assert "0.5" in fig.layout.title.text

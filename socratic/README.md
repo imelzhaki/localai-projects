@@ -29,4 +29,4 @@ Buka URL yang dicetak Streamlit (biasanya http://localhost:8501).
 
 - **Visualisasi Geometri (Plotly)**: gambar segitiga, segiempat, lingkaran (2D) dan kubus (3D interaktif) melalui sidebar atau secara otomatis saat user meminta (contoh: "gambarkan segitiga sama kaki"). Cocok untuk penjelasan geometri dalam pembelajaran matematika.
 - **Notasi LaTeX**: semua ekspresi matematika dan saintifik ditulis dalam format LaTeX (`$...$` atau `$$...$$`) dan dirender oleh Streamlit.
-- **Deteksi Permintaan Gambar**: aplikasi mendeteksi kata kunci seperti "gambar", "gambarkan", "segitiga", "persegi", "lingkaran", "kubus" dalam input user dan menampilkan visualisasi yang sesuai di bawah respons tutor.
+- **Deteksi Permintaan Gambar**: aplikasi mendeteksi kata kunci seperti "gambar", "gambarkan", "segitiga", "persegi", "lingkaran", "kubus", "bola" dalam input user dan menampilkan visualisasi yang sesuai di bawah respons tutor.

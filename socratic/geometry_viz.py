@@ -104,6 +104,53 @@ def create_circle_figure(center, radius):
     return fig
 
 
+def create_sphere_figure(radius=1.0):
+    """Buat figure Plotly 3D untuk bola dengan radius tertentu."""
+    import math
+
+    # Buat permukaan bola menggunakan parameterisasi bola
+    u = [i * 0.1 for i in range(32)]  # azimuth
+    v = [i * 0.1 for i in range(16)]  # polar
+
+    xs = []
+    ys = []
+    zs = []
+
+    for ui in u:
+        for vi in v:
+            x = radius * math.cos(ui) * math.sin(vi)
+            y = radius * math.sin(ui) * math.sin(vi)
+            z = radius * math.cos(vi)
+            xs.append(x)
+            ys.append(y)
+            zs.append(z)
+
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter3d(
+            x=xs,
+            y=ys,
+            z=zs,
+            mode="markers",
+            marker=dict(size=2, color="royalblue", opacity=0.6),
+            name=f"Bola (r={radius})",
+        )
+    )
+    fig.update_layout(
+        title=f"Bola 3D (radius: {radius})",
+        scene=dict(
+            xaxis_title="x",
+            yaxis_title="y",
+            zaxis_title="z",
+            aspectmode="cube",
+        ),
+        width=600,
+        height=600,
+        showlegend=False,
+    )
+    return fig
+
+
 def create_cube_figure():
     """Buat figure Plotly 3D untuk kubus satuan."""
     # 8 titik sudut kubus
