@@ -83,7 +83,6 @@ def handle_user_input():
     # Deteksi URL dalam pesan user dan muat konten halaman sebagai konteks
     hasil = fetch_urls_in_text_with_status(prompt)
     urls = hasil["urls"]
-    model_messages = list(st.session_state.messages)
     if urls:
         sukses = [u for u in hasil["per_url"] if u["status"] == "ok"]
         gagal = [u for u in hasil["per_url"] if u["status"] == "error"]
@@ -114,10 +113,6 @@ def handle_user_input():
             )
             # Perbarui pesan user di session state agar konten tersimpan
             st.session_state.messages[-1] = user_message
-            logger.debug(
-                "Pesan user diperbarui dengan konten web. Pesan yang dikirim ke LLM: %s",
-                model_messages,
-            )
 
         if gagal:
             daftar_gagal = "; ".join(
@@ -126,6 +121,8 @@ def handle_user_input():
             st.warning(f"Gagal membuka halaman: {daftar_gagal}")
             logger.warning("Gagal membuka %d URL: %s", len(gagal), daftar_gagal)
 
+    # Ambil snapshot pesan SETELAH konten web di-injeksi, agar LLM menerima konten terbaru
+    model_messages = list(st.session_state.messages)
     logger.info("Mengirim %d pesan ke LLM (model: llama3.2:3b)", len(model_messages))
     with st.chat_message("assistant"):
         try:
