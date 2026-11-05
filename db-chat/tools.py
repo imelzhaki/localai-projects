@@ -154,6 +154,17 @@ def get_supplier(supplier_id=None, nama=None):
     return {}
 
 
+# Peta nama alat ke fungsi, untuk dieksekusi oleh ollama_client
+execute_tool_map = {
+    "get_sales_data": get_sales_data,
+    "get_customer": get_customer,
+    "get_product": get_product,
+    "get_sales_order": get_sales_order,
+    "get_purchase_order": get_purchase_order,
+    "get_supplier": get_supplier,
+}
+
+
 TOOLS = [
     {
         "type": "function",
