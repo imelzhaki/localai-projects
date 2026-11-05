@@ -18,6 +18,7 @@ bertahan setelah aplikasi di-restart.
 - [Ollama](https://ollama.com) terinstal dan berjalan (`ollama serve`)
 - Model `llama3.2:3b` telah diunduh (`ollama pull llama3.2:3b`)
 - Python 3.10+
+- [trafilatura](https://trafilatura.readthedocs.io/) untuk ekstraksi konten artikel dari halaman web (terinstal otomatis via `requirements.txt`)
 
 ## Instalasi
 
@@ -95,7 +96,7 @@ chat-sample/
 
 1. User mengetik pesan di `st.chat_input` dan tekan Enter
 2. Pesan user ditambahkan ke riwayat `session_state` dan ditampilkan
-3. **Jika pesan mengandung URL, aplikasi secara otomatis membuka halaman web dan mengekstrak teksnya melalui `web_fetcher.py`**
+3. **Jika pesan mengandung URL, aplikasi secara otomatis membuka halaman web dan mengekstrak teks artikelnya melalui `web_fetcher.py` (menggunakan [trafilatura](https://trafilatura.readthedocs.io/) untuk membersihkan boilerplate halaman web)**
 4. Konten halaman web disisipkan sebagai pesan sistem (konteks) bersama riwayat percakapan
 5. Riwayat lengkap (termasuk konten URL) dikirim ke `ollama_client.chat_stream(messages)` yang menghasilkan potongan teks
 6. Potongan di-stream ke `st.chat_message("assistant")` melalui `st.write_stream`

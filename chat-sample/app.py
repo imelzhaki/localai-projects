@@ -105,15 +105,14 @@ def handle_user_input():
             )
 
             user_message["content"] = (
+                "INSTRUKSI PENTING: Jawab HANYA berdasarkan konten web di bawah ini. "
+                "JANGAN gunakan pengetahuan sendiri atau data latih. Jika tidak ada "
+                "di konten web, katakan 'tidak tersedia'.\n\n"
                 f"Pertanyaan: {pertanyaan_asli}\n\n"
-                f"Konten web sebagai konteks:\n{konten_web}\n\n"
-                "INSTRUKSI PENTING: Jawab pertanyaan di atas HANYA berdasarkan "
-                "konten web yang disediakan. Jangan menggunakan pengetahuan sendiri "
-                "atau data latih. Jika jawaban tidak ada dalam konten web, katakan "
-                "bahwa informasi tidak tersedia dalam halaman web tersebut."
+                f"Konten web:\n{konten_web}"
             )
             logger.info(
-                "Prompt disusun ulang: pertanyaan + konten web dari %d URL, total panjang: %d karakter",
+                "Prompt disusun ulang: instruksi + pertanyaan + konten web dari %d URL, total panjang: %d karakter",
                 len(sukses),
                 len(user_message["content"]),
             )

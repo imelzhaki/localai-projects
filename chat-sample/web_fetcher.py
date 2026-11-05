@@ -1,7 +1,6 @@
 import logging
 import re
 import urllib.request
-from html.parser import HTMLParser
 
 logger = logging.getLogger(__name__)
 
@@ -9,35 +8,55 @@ logger = logging.getLogger(__name__)
 _URL_PATTERN = re.compile(r"https?://\S+", re.IGNORECASE)
 
 
-class _TextExtractor(HTMLParser):
-    """Ekstrak teks terbaca dari HTML, abaikan blok script dan style."""
+def _html_ke_teks(html):
+    """Konversi HTML menjadi teks terbaca menggunakan trafilatura.
 
-    def __init__(self):
-        super().__init__()
-        self._parts = []
-        self._skip = False
+    Trafilatura adalah library khusus untuk ekstraksi konten artikel
+    dari halaman web, menghilangkan boilerplate (navigasi, iklan, dll.).
+    Jika trafilatura tidak tersedia atau gagal, fallback ke ekstraksi sederhana.
+    """
+    try:
+        from trafilatura import extract as trafilatura_extract
+        teks = trafilatura_extract(html)
+        if teks and teks.strip():
+            return teks.strip()
+    except Exception as exc:  # pylint: disable=broad-except
+        logger.debug("Trafilatura gagal, menggunakan fallback: %s", exc)
 
-    def handle_starttag(self, tag, attrs):
-        if tag in ("script", "style"):
-            self._skip = True
-        elif tag in ("p", "div", "br", "tr", "li", "h1", "h2", "h3", "h4", "h5", "h6"):
-            self._parts.append("\n")
+    # Fallback: ekstraksi sederhana dengan HTMLParser
+    from html.parser import HTMLParser
 
-    def handle_endtag(self, tag):
-        if tag in ("script", "style"):
+    class _SimpleExtractor(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self._parts = []
             self._skip = False
-        elif tag in ("p", "div", "li"):
-            self._parts.append("\n")
 
-    def handle_data(self, data):
-        if not self._skip:
-            self._parts.append(data)
+        def handle_starttag(self, tag, attrs):
+            if tag in ("script", "style"):
+                self._skip = True
+            elif tag in ("p", "br", "tr", "li", "h1", "h2", "h3", "h4", "h5", "h6"):
+                self._parts.append("\n")
 
-    def get_text(self):
-        text = "".join(self._parts)
-        lines = [baris.strip() for baris in text.splitlines()]
-        lines = [baris for baris in lines if baris]
-        return "\n".join(lines)
+        def handle_endtag(self, tag):
+            if tag in ("script", "style"):
+                self._skip = False
+            elif tag in ("p", "li"):
+                self._parts.append("\n")
+
+        def handle_data(self, data):
+            if not self._skip:
+                self._parts.append(data)
+
+        def get_text(self):
+            text = "".join(self._parts)
+            lines = [baris.strip() for baris in text.splitlines()]
+            lines = [baris for baris in lines if baris]
+            return "\n".join(lines)
+
+    parser = _SimpleExtractor()
+    parser.feed(html)
+    return parser.get_text()
 
 
 def extract_urls(teks):
@@ -46,13 +65,6 @@ def extract_urls(teks):
     Mengembalikan daftar string URL yang ditemukan dalam teks.
     """
     return _URL_PATTERN.findall(teks)
-
-
-def _html_ke_teks(html):
-    """Konversi HTML menjadi teks terbaca."""
-    parser = _TextExtractor()
-    parser.feed(html)
-    return parser.get_text()
 
 
 def fetch_page_content(url, timeout=10):

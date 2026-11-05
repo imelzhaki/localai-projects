@@ -1,2 +1,4 @@
 streamlit>=1.32.0
 ollama>=0.1.0
+trafilatura>=2.3.0
+lxml-html-clean>=0.4.0
