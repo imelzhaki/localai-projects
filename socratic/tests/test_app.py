@@ -25,7 +25,8 @@ def test_tentukan_stage_reveal_saat_counter_lebih_dari_batas():
 
 
 def test_reset_mengembalikan_nilai_awal():
-    messages, question_count, stage = app.reset_state()
+    messages, question_count, stage, geometry_selection = app.reset_state()
     assert messages == []
     assert question_count == 0
     assert stage == "guiding"
+    assert geometry_selection == "Tidak ada"

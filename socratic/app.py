@@ -38,7 +38,7 @@ def tentukan_stage(question_count):
 
 def reset_state():
     """Mengembalikan state ke nilai awal."""
-    return [], 0, "guiding"
+    return [], 0, "guiding", "Tidak ada"
 
 
 def initialize_state():
@@ -48,6 +48,8 @@ def initialize_state():
         st.session_state.question_count = 0
     if "stage" not in st.session_state:
         st.session_state.stage = "guiding"
+    if "geometry_selection" not in st.session_state:
+        st.session_state.geometry_selection = "Tidak ada"
 
 
 def display_history():
@@ -65,10 +67,11 @@ def handle_user_input():
 
     # Perintah /reset: hapus riwayat dan atur ulang counter
     if perintah == "/reset":
-        messages, question_count, stage = reset_state()
+        messages, question_count, stage, geometry_selection = reset_state()
         st.session_state.messages = messages
         st.session_state.question_count = question_count
         st.session_state.stage = stage
+        st.session_state.geometry_selection = geometry_selection
         save_history([])
         st.success("Riwayat percakapan telah dihapus. Topik baru telah dimulai.")
         logger.info("Riwayat percakapan dihapus oleh user melalui perintah /reset")
@@ -149,7 +152,12 @@ def render_geometry_visualizer():
     jenis = st.selectbox(
         "Pilih bangun geometri:",
         ["Tidak ada", "Segitiga", "Segiempat", "Lingkaran", "Kubus 3D"],
+        key="geometry_selectbox",
+        index=["Tidak ada", "Segitiga", "Segiempat", "Lingkaran", "Kubus 3D"].index(
+            st.session_state.geometry_selection
+        ),
     )
+    st.session_state.geometry_selection = jenis
 
     if jenis == "Segitiga":
         st.caption("Masukkan 3 titik (x, y) untuk segitiga:")
@@ -212,10 +220,11 @@ def main():
     display_history()
 
     if st.button("Mulai topik baru"):
-        messages, question_count, stage = reset_state()
+        messages, question_count, stage, geometry_selection = reset_state()
         st.session_state.messages = messages
         st.session_state.question_count = question_count
         st.session_state.stage = stage
+        st.session_state.geometry_selection = geometry_selection
         save_history([])
         st.success("Topik baru telah dimulai. Silakan ajukan pertanyaan baru.")
 
