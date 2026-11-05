@@ -1,4 +1,5 @@
 import logging
+import re
 import streamlit as st
 
 from history import load_history, save_history
@@ -91,17 +92,31 @@ def handle_user_input():
 
         if sukses:
             st.info(f"Membuka {len(sukses)} halaman: {', '.join(u['url'] for u in sukses)}")
-            # Ganti setiap URL dalam prompt dengan konten yang di-fetch,
-            # sehingga LLM menerima pertanyaan yang sudah berisi isi halaman web
-            konten_dengan_isi = prompt
+            # Susun ulang prompt: pertanyaan asli (tanpa URL) + konten web
+            # sebagai konteks + instruksi paksa agar LLM menjawab berdasarkan konten web
+            pertanyaan_asli = prompt
             for u in sukses:
-                konten_dengan_isi = konten_dengan_isi.replace(u["url"], u["content"])
-            logger.info(
-                "URL diganti dengan konten web dari %d URL, total panjang: %d karakter",
-                len(sukses),
-                len(konten_dengan_isi),
+                pertanyaan_asli = pertanyaan_asli.replace(u["url"], "")
+            # Normalisasi spasi ganda yang tersisa setelah URL dihapus
+            pertanyaan_asli = re.sub(r"\s+", " ", pertanyaan_asli).strip()
+
+            konten_web = "\n\n".join(
+                f"=== Konten dari {u['url']} ===\n{u['content']}" for u in sukses
             )
-            user_message["content"] = konten_dengan_isi
+
+            user_message["content"] = (
+                f"Pertanyaan: {pertanyaan_asli}\n\n"
+                f"Konten web sebagai konteks:\n{konten_web}\n\n"
+                "INSTRUKSI PENTING: Jawab pertanyaan di atas HANYA berdasarkan "
+                "konten web yang disediakan. Jangan menggunakan pengetahuan sendiri "
+                "atau data latih. Jika jawaban tidak ada dalam konten web, katakan "
+                "bahwa informasi tidak tersedia dalam halaman web tersebut."
+            )
+            logger.info(
+                "Prompt disusun ulang: pertanyaan + konten web dari %d URL, total panjang: %d karakter",
+                len(sukses),
+                len(user_message["content"]),
+            )
             # Perbarui pesan user di session state agar konten tersimpan
             st.session_state.messages[-1] = user_message
 
