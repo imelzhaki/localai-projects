@@ -3,7 +3,11 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from validation import normalize_sql_for_sqlite, validate_sql
+from validation import (
+    check_aggregate_in_where,
+    normalize_sql_for_sqlite,
+    validate_sql,
+)
 
 
 def test_validate_sql_accepts_valid_select():
@@ -76,3 +80,65 @@ def test_normalize_sql_for_sqlite_no_extract_unchanged():
 def test_normalize_sql_for_sqlite_empty_string():
     result = normalize_sql_for_sqlite("")
     assert result == ""
+
+
+def test_check_aggregate_in_where_max():
+    sql = "SELECT * FROM Sales_Order WHERE MAX(total) > 100;"
+    bad, error = check_aggregate_in_where(sql)
+    assert bad is True
+    assert error is not None
+
+
+def test_check_aggregate_in_where_min():
+    sql = "SELECT * FROM Sales_Order WHERE MIN(tanggal) = '2023-01-01';"
+    bad, error = check_aggregate_in_where(sql)
+    assert bad is True
+    assert error is not None
+
+
+def test_check_aggregate_in_where_sum():
+    sql = "SELECT * FROM Sales_Order WHERE SUM(total) > 1000;"
+    bad, error = check_aggregate_in_where(sql)
+    assert bad is True
+    assert error is not None
+
+
+def test_check_aggregate_in_where_count():
+    sql = "SELECT * FROM Sales_Order WHERE COUNT(*) > 5;"
+    bad, error = check_aggregate_in_where(sql)
+    assert bad is True
+    assert error is not None
+
+
+def test_check_aggregate_in_where_avg():
+    sql = "SELECT * FROM Sales_Order WHERE AVG(total) > 100;"
+    bad, error = check_aggregate_in_where(sql)
+    assert bad is True
+    assert error is not None
+
+
+def test_check_aggregate_in_where_no_aggregate():
+    sql = "SELECT * FROM Sales_Order WHERE total > 100;"
+    bad, error = check_aggregate_in_where(sql)
+    assert bad is False
+    assert error is None
+
+
+def test_check_aggregate_in_where_aggregate_in_select_ok():
+    sql = "SELECT MAX(total) FROM Sales_Order WHERE total > 100;"
+    bad, error = check_aggregate_in_where(sql)
+    assert bad is False
+    assert error is None
+
+
+def test_check_aggregate_in_where_no_where_clause():
+    sql = "SELECT * FROM Sales_Order;"
+    bad, error = check_aggregate_in_where(sql)
+    assert bad is False
+    assert error is None
+
+
+def test_check_aggregate_in_where_empty_string():
+    bad, error = check_aggregate_in_where("")
+    assert bad is False
+    assert error is None

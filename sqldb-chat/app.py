@@ -9,7 +9,11 @@ from ollama_client import generate_sql
 from schema import build_schema_docs
 from retrieval import build_index, retrieve_schema_docs
 from fewshot import get_fewshot_examples
-from validation import validate_sql, normalize_sql_for_sqlite
+from validation import (
+    validate_sql,
+    normalize_sql_for_sqlite,
+    check_aggregate_in_where,
+)
 from critic import critique_sql
 from execution import execute_select
 
@@ -108,6 +112,17 @@ def process_question(question):
 
     # Normalisasi konstruk non-SQLite (mis. EXTRACT -> strftime) sebelum eksekusi
     final_sql = normalize_sql_for_sqlite(final_sql)
+
+    # Cek penggunaan fungsi agregat dalam WHERE (tidak valid di SQLite)
+    agg_bad, agg_error = check_aggregate_in_where(final_sql)
+    if agg_bad:
+        return {
+            "question": question,
+            "sql": final_sql,
+            "rows": None,
+            "error": agg_error,
+            "corrected": criticism["corrected"],
+        }
 
     # 5. Eksekusi read-only
     exec_result = execute_select(final_sql)

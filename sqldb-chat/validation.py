@@ -55,6 +55,45 @@ def validate_sql(sql):
     return {"valid": True, "error": None, "sql": sql}
 
 
+def check_aggregate_in_where(sql):
+    """Deteksi penggunaan fungsi agregat (MAX, MIN, SUM, COUNT, AVG)
+    langsung dalam klausa WHERE, yang tidak valid di SQLite.
+
+    Fungsi agregat hanya boleh digunakan dalam SELECT atau HAVING,
+    bukan dalam WHERE (harus menggunakan subquery).
+
+    Args:
+        sql: String kueri SQL.
+
+    Returns:
+        (bool, str|None): (True, pesan_error) jika ditemukan agregat
+        dalam WHERE, (False, None) jika tidak ada masalah.
+    """
+    if not sql:
+        return False, None
+
+    # Ambil bagian WHERE clause (dari kata WHERE hingga akhir atau ORDER BY/GROUP BY/HAVING/LIMIT)
+    where_match = re.search(
+        r"\bWHERE\b(.*?)(?:\bORDER\s+BY\b|\bGROUP\s+BY\b|\bHAVING\b|\bLIMIT\b|$)",
+        sql,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if not where_match:
+        return False, None
+
+    where_clause = where_match.group(1)
+
+    # Cek fungsi agregat dalam WHERE
+    aggregate_pattern = r"\b(MAX|MIN|SUM|COUNT|AVG)\s*\("
+    if re.search(aggregate_pattern, where_clause, re.IGNORECASE):
+        return True, (
+            "Fungsi agregat (MAX/MIN/SUM/COUNT/AVG) tidak boleh digunakan "
+            "langsung dalam klausa WHERE. Gunakan subquery atau HAVING."
+        )
+
+    return False, None
+
+
 def normalize_sql_for_sqlite(sql):
     """Konstruk SQL non-SQLite (mis. EXTRACT) ke ekuivalen SQLite.
 
