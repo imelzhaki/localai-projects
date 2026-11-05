@@ -47,12 +47,17 @@ def handle_user_input():
             konten_tergabung = "\n\n".join(
                 f"=== {u['url']} ===\n{u['content']}" for u in sukses
             )
-            # Sisipkan konten web ke dalam pesan user agar model tidak mengabaikannya
+            # Sisipkan konten web ke dalam pesan user dengan instruksi paksa
+            # agar model menggunakan konten web, bukan data latihnya sendiri
             user_message["content"] = (
                 f"{prompt}\n\n"
-                "Berikut adalah konten dari halaman web yang disebutkan di atas. "
-                "Gunakan konten ini untuk menjawab pertanyaan user.\n\n"
-                f"{konten_tergabung}"
+                "=== KONTEN WEB (Gunakan ini sebagai sumber jawaban) ===\n"
+                f"{konten_tergabung}\n"
+                "=== AKHIR KONTEN WEB ===\n\n"
+                "INSTRUKSI PENTING: Jawab pertanyaan di atas HANYA berdasarkan "
+                "konten web yang disediakan di atas. Jangan menggunakan pengetahuan "
+                "sendiri atau data latih Anda. Jika jawaban tidak ada dalam konten web, "
+                "katakan bahwa informasi tidak tersedia dalam halaman web tersebut."
             )
             # Perbarui pesan user di session state agar konten tersimpan
             st.session_state.messages[-1] = user_message
