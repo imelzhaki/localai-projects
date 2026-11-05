@@ -132,6 +132,26 @@ def test_list_products(tmp_path, monkeypatch):
     assert all("nama" in r and "kategori" in r and "harga" in r and "stok" in r for r in hasil)
 
 
+def test_list_products_by_kategori(tmp_path, monkeypatch):
+    db_path = tmp_path / "test.db"
+    monkeypatch.setattr("database.DB_PATH", db_path)
+    monkeypatch.setattr("tools.DB_PATH", db_path)
+    init_db()
+    hasil = tools.list_products(kategori="Elektronik")
+    assert isinstance(hasil, list)
+    assert len(hasil) > 0
+    assert all(r["kategori"] == "Elektronik" for r in hasil)
+
+
+def test_list_products_by_kategori_tidak_ditemukan(tmp_path, monkeypatch):
+    db_path = tmp_path / "test.db"
+    monkeypatch.setattr("database.DB_PATH", db_path)
+    monkeypatch.setattr("tools.DB_PATH", db_path)
+    init_db()
+    hasil = tools.list_products(kategori="TidakAda")
+    assert hasil == []
+
+
 def test_get_sales_by_product(tmp_path, monkeypatch):
     db_path = tmp_path / "test.db"
     monkeypatch.setattr("database.DB_PATH", db_path)
