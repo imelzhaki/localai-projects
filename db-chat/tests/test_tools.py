@@ -152,6 +152,28 @@ def test_list_products_by_kategori_tidak_ditemukan(tmp_path, monkeypatch):
     assert hasil == []
 
 
+def test_list_products_by_stok_max(tmp_path, monkeypatch):
+    db_path = tmp_path / "test.db"
+    monkeypatch.setattr("database.DB_PATH", db_path)
+    monkeypatch.setattr("tools.DB_PATH", db_path)
+    init_db()
+    hasil = tools.list_products(stok_max=10)
+    assert isinstance(hasil, list)
+    assert len(hasil) > 0
+    assert all(r["stok"] <= 10 for r in hasil)
+
+
+def test_list_products_by_harga_max(tmp_path, monkeypatch):
+    db_path = tmp_path / "test.db"
+    monkeypatch.setattr("database.DB_PATH", db_path)
+    monkeypatch.setattr("tools.DB_PATH", db_path)
+    init_db()
+    hasil = tools.list_products(harga_max=500000)
+    assert isinstance(hasil, list)
+    assert len(hasil) > 0
+    assert all(r["harga"] <= 500000 for r in hasil)
+
+
 def test_get_sales_by_product(tmp_path, monkeypatch):
     db_path = tmp_path / "test.db"
     monkeypatch.setattr("database.DB_PATH", db_path)

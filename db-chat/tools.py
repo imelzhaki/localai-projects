@@ -207,16 +207,24 @@ def list_suppliers():
     )
 
 
-def list_products(kategori=None):
-    """Daftar semua produk, atau produk dalam kategori tertentu (ID, nama, kategori, harga, stok)."""
+def list_products(kategori=None, stok_max=None, harga_max=None):
+    """Daftar semua produk, atau produk dengan filter kategori, stok maksimal, atau harga maksimal (ID, nama, kategori, harga, stok)."""
+    conditions = []
+    params = []
     if kategori:
-        return execute_query(
-            "SELECT product_id, nama, kategori, harga, stok FROM Product WHERE kategori = ? ORDER BY nama",
-            (kategori,),
-        )
-    return execute_query(
-        "SELECT product_id, nama, kategori, harga, stok FROM Product ORDER BY nama"
-    )
+        conditions.append("kategori = ?")
+        params.append(kategori)
+    if stok_max is not None:
+        conditions.append("stok <= ?")
+        params.append(stok_max)
+    if harga_max is not None:
+        conditions.append("harga <= ?")
+        params.append(harga_max)
+    sql = "SELECT product_id, nama, kategori, harga, stok FROM Product"
+    if conditions:
+        sql += " WHERE " + " AND ".join(conditions)
+    sql += " ORDER BY nama"
+    return execute_query(sql, tuple(params))
 
 
 def get_sales_order_items(order_id=None):
@@ -481,13 +489,21 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "list_products",
-            "description": "Daftar semua produk, atau produk dalam kategori tertentu (ID, nama, kategori, harga, stok). Gunakan untuk pertanyaan yang meminta daftar produk, termasuk filter kategori.",
+            "description": "Daftar semua produk, atau produk dengan filter kategori, stok maksimal, atau harga maksimal (ID, nama, kategori, harga, stok). Gunakan untuk pertanyaan yang meminta daftar produk, termasuk filter kategori, stok, atau harga.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "kategori": {
                         "type": "string",
                         "description": "Kategori produk (contoh: Elektronik, Aksesori, Komputer)",
+                    },
+                    "stok_max": {
+                        "type": "integer",
+                        "description": "Stok maksimal (produk dengan stok <= nilai ini)",
+                    },
+                    "harga_max": {
+                        "type": "integer",
+                        "description": "Harga maksimal (produk dengan harga <= nilai ini)",
                     },
                 },
                 "required": [],
