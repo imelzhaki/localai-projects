@@ -5,14 +5,41 @@ HINT_PROMPT = """Anda adalah guru sabar yang menggunakan metode Socratic. Jawab 
 REVEAL_PROMPT = """Anda adalah guru sabar yang menggunakan metode Socratic. Jawab dalam Bahasa Indonesia. Berikan JAWABAN lengkap dengan penjelasan singkat, lalu ajak siswa untuk merangkum kembali dengan kata mereka sendiri. Gunakan notasi LaTeX (dalam $...$ atau $$...$$) untuk semua ekspresi matematika dan saintifik."""
 
 
-def build_system_prompt(stage):
-    """Bangun system prompt berdasarkan tahap bimbingan.
+def build_system_prompt(stage, school_level=None, class_level=None, subject=None, rag_context=""):
+    """Bangun system prompt berdasarkan tahap bimbingan dan konteks kurikulum.
 
     stage: "guiding" | "hint" | "reveal"
+    school_level: "SD" | "SMP" | "SMA" | None
+    class_level: "1" | "2" | "3" | None
+    subject: nama mata pelajaran | None
+    rag_context: konteks yang diambil dari RAG (dokumen kurikulum)
     """
-    prompts = {
+    base = {
         "guiding": GUIDING_PROMPT,
         "hint": HINT_PROMPT,
         "reveal": REVEAL_PROMPT,
-    }
-    return prompts.get(stage, GUIDING_PROMPT)
+    }.get(stage, GUIDING_PROMPT)
+
+    # Tambahkan konteks kurikulum
+    curriculum_parts = []
+    if school_level:
+        curriculum_parts.append(f"Tingkat sekolah: {school_level}")
+    if class_level:
+        curriculum_parts.append(f"Kelas: {class_level}")
+    if subject:
+        curriculum_parts.append(f"Mata pelajaran: {subject}")
+
+    curriculum_text = ""
+    if curriculum_parts:
+        curriculum_text = "\n\nKONTEKS KURIKULUM:\n" + "\n".join(curriculum_parts)
+
+    # Tambahkan konteks RAG dari dokumen kurikulum
+    rag_text = ""
+    if rag_context:
+        rag_text = (
+            "\n\nKONTEKS DARI DOKUMEN KURIKULUM (CP, ATP, Modul Ajar):\n"
+            + rag_context
+            + "\n\nGunakan konteks di atas untuk memastikan pertanyaan penuntang Anda sesuai dengan capaian pembelajaran dan materi ajar yang berlaku."
+        )
+
+    return base + curriculum_text + rag_text
