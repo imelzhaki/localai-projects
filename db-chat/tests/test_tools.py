@@ -121,6 +121,17 @@ def test_list_suppliers(tmp_path, monkeypatch):
     assert all("nama" in r and "kota" in r and "telepon" in r for r in hasil)
 
 
+def test_list_products(tmp_path, monkeypatch):
+    db_path = tmp_path / "test.db"
+    monkeypatch.setattr("database.DB_PATH", db_path)
+    monkeypatch.setattr("tools.DB_PATH", db_path)
+    init_db()
+    hasil = tools.list_products()
+    assert isinstance(hasil, list)
+    assert len(hasil) == 30
+    assert all("nama" in r and "kategori" in r and "harga" in r and "stok" in r for r in hasil)
+
+
 def test_get_sales_order_items_by_order(tmp_path, monkeypatch):
     db_path = tmp_path / "test.db"
     monkeypatch.setattr("database.DB_PATH", db_path)

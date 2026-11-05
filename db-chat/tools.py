@@ -207,6 +207,13 @@ def list_suppliers():
     )
 
 
+def list_products():
+    """Daftar semua produk (ID, nama, kategori, harga, stok)."""
+    return execute_query(
+        "SELECT product_id, nama, kategori, harga, stok FROM Product ORDER BY nama"
+    )
+
+
 def get_sales_order_items(order_id=None):
     """Detail item dalam pesanan penjualan (produk, kuantitas, harga satuan, subtotal)."""
     if order_id is not None:
@@ -253,6 +260,7 @@ execute_tool_map = {
     "list_sales_orders": list_sales_orders,
     "list_purchase_orders": list_purchase_orders,
     "list_suppliers": list_suppliers,
+    "list_products": list_products,
     "get_sales_order_items": get_sales_order_items,
     "get_database_stats": get_database_stats,
 }
@@ -412,6 +420,18 @@ TOOLS = [
         "function": {
             "name": "list_suppliers",
             "description": "Daftar semua supplier (ID, nama, kontak, kota, telepon). Gunakan untuk pertanyaan yang meminta daftar lengkap supplier.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_products",
+            "description": "Daftar semua produk (ID, nama, kategori, harga, stok). Gunakan untuk pertanyaan yang meminta daftar lengkap produk.",
             "parameters": {
                 "type": "object",
                 "properties": {},
