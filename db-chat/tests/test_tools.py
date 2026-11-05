@@ -1,0 +1,76 @@
+import os
+import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from database import init_db, DB_PATH
+import tools
+
+
+def test_get_sales_data_by_category(tmp_path, monkeypatch):
+    db_path = tmp_path / "test.db"
+    monkeypatch.setattr("database.DB_PATH", db_path)
+    monkeypatch.setattr("tools.DB_PATH", db_path)
+    init_db()
+    hasil = tools.get_sales_data(category="Elektronik", month="last")
+    assert isinstance(hasil, list)
+    assert len(hasil) > 0
+    assert all("kategori" in r or "nama" in r for r in hasil)
+
+
+def test_get_sales_data_empty_category(tmp_path, monkeypatch):
+    db_path = tmp_path / "test.db"
+    monkeypatch.setattr("database.DB_PATH", db_path)
+    monkeypatch.setattr("tools.DB_PATH", db_path)
+    init_db()
+    hasil = tools.get_sales_data(category="TidakAda", month="last")
+    assert hasil == [] or hasil == "Tidak ada data"
+
+
+def test_get_customer_by_id(tmp_path, monkeypatch):
+    db_path = tmp_path / "test.db"
+    monkeypatch.setattr("database.DB_PATH", db_path)
+    monkeypatch.setattr("tools.DB_PATH", db_path)
+    init_db()
+    hasil = tools.get_customer(customer_id=1)
+    assert isinstance(hasil, dict)
+    assert hasil["nama"] == "Budi Santoso"
+
+
+def test_get_customer_not_found(tmp_path, monkeypatch):
+    db_path = tmp_path / "test.db"
+    monkeypatch.setattr("database.DB_PATH", db_path)
+    monkeypatch.setattr("tools.DB_PATH", db_path)
+    init_db()
+    hasil = tools.get_customer(customer_id=9999)
+    assert hasil == {} or hasil == "Pelanggan tidak ditemukan"
+
+
+def test_get_product_by_category(tmp_path, monkeypatch):
+    db_path = tmp_path / "test.db"
+    monkeypatch.setattr("database.DB_PATH", db_path)
+    monkeypatch.setattr("tools.DB_PATH", db_path)
+    init_db()
+    hasil = tools.get_product(kategori="Elektronik")
+    assert isinstance(hasil, list)
+    assert len(hasil) > 0
+
+
+def test_get_supplier_by_id(tmp_path, monkeypatch):
+    db_path = tmp_path / "test.db"
+    monkeypatch.setattr("database.DB_PATH", db_path)
+    monkeypatch.setattr("tools.DB_PATH", db_path)
+    init_db()
+    hasil = tools.get_supplier(supplier_id=1)
+    assert isinstance(hasil, dict)
+    assert hasil["nama"] == "Toko Elektronik Jaya"
+
+
+def test_tools_schemas_are_valid():
+    """Setiap alat dalam TOOLS memiliki nama, deskripsi, dan parameter."""
+    for alat in tools.TOOLS:
+        assert "name" in alat
+        assert "description" in alat
+        assert "parameters" in alat
+        assert "type" in alat["parameters"]
+        assert "properties" in alat["parameters"]
