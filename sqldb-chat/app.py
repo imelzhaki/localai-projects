@@ -126,6 +126,17 @@ def process_question(question):
     }
 
 
+def _display_record_card(record):
+    """Tampilkan satu baris data sebagai kartu form (label + nilai)."""
+    st.markdown("### Detail Data")
+    with st.container(border=True):
+        cols = st.columns(2)
+        for i, (key, value) in enumerate(record.items()):
+            with cols[i % 2]:
+                st.markdown(f"**{key}**")
+                st.write(value if value is not None else "-")
+
+
 def handle_user_input():
     prompt = st.chat_input("Ketik pertanyaan (Bahasa Indonesia atau Inggris)...")
     if not prompt:
@@ -161,8 +172,13 @@ def handle_user_input():
                 if result["corrected"]:
                     st.info("🔍 SQL telah dikoreksi oleh kritik skema.")
 
-                st.dataframe(result["rows"])
-                response = f"Ditemukan {len(result['rows'])} baris data."
+                rows = result["rows"]
+                if len(rows) == 1:
+                    _display_record_card(rows[0])
+                    response = "Ditemukan 1 baris data."
+                else:
+                    st.dataframe(rows)
+                    response = f"Ditemukan {len(rows)} baris data."
 
         except Exception as exc:
             logger.error("Gagal memproses pesan: %s", exc)
