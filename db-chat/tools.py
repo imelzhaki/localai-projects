@@ -238,6 +238,35 @@ def get_sales_order_items(order_id=None):
     return execute_query(sql, ())
 
 
+def get_sales_by_product(nama_produk=None, month=None):
+    """Data penjualan untuk produk tertentu (nama produk, jumlah terjual, total omset, tanggal)."""
+    conditions = []
+    params = []
+    if nama_produk:
+        conditions.append("p.nama LIKE ?")
+        params.append(f"%{nama_produk}%")
+    if month == "last":
+        conditions.append("strftime('%Y-%m', so.tanggal) = (SELECT MAX(strftime('%Y-%m', tanggal)) FROM Sales_Order)")
+    elif month:
+        conditions.append("strftime('%Y-%m', so.tanggal) = ?")
+        params.append(month)
+    if not conditions:
+        return []
+    sql = """
+    SELECT p.nama AS produk, SUM(soi.kuantitas) AS jumlah_terjual,
+           SUM(soi.kuantitas * soi.harga_satuan) AS total_omset,
+           so.tanggal, so.order_id, c.nama AS pelanggan
+    FROM Sales_Order_Item soi
+    JOIN Product p ON p.product_id = soi.product_id
+    JOIN Sales_Order so ON so.order_id = soi.order_id
+    JOIN Customer c ON c.customer_id = so.customer_id
+    WHERE """ + " AND ".join(conditions) + """
+    GROUP BY p.nama, so.order_id, so.tanggal, c.nama
+    ORDER BY so.tanggal DESC
+    """
+    return execute_query(sql, tuple(params))
+
+
 def get_database_stats():
     """Statistik ringkasan database: jumlah baris per tabel."""
     tables = ["Customer", "Supplier", "Product", "Sales_Order", "Sales_Order_Item", "Purchase_Order"]
@@ -262,6 +291,7 @@ execute_tool_map = {
     "list_suppliers": list_suppliers,
     "list_products": list_products,
     "get_sales_order_items": get_sales_order_items,
+    "get_sales_by_product": get_sales_by_product,
     "get_database_stats": get_database_stats,
 }
 
@@ -448,6 +478,27 @@ TOOLS = [
                 "type": "object",
                 "properties": {
                     "order_id": {"type": "integer", "description": "ID pesanan penjualan"},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_sales_by_product",
+            "description": "Data penjualan untuk produk tertentu (jumlah terjual, total omset, tanggal). Gunakan untuk pertanyaan tentang produk tertentu yang laku terjual.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "nama_produk": {
+                        "type": "string",
+                        "description": "Nama produk (parsial cocok, contoh: Blender, Laptop)",
+                    },
+                    "month": {
+                        "type": "string",
+                        "description": "Bulan. Gunakan 'last' untuk bulan lalu, atau format 'YYYY-MM'",
+                    },
                 },
                 "required": [],
             },
