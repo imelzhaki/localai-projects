@@ -29,3 +29,10 @@ def test_reveal_prompt_mencakup_jawaban_lengkap():
 def test_tahap_tidak_dikenal_mengembalikan_guiding():
     prompt = build_system_prompt("tidak_valid")
     assert prompt == build_system_prompt("guiding")
+
+
+def test_semua_tahap_menggunakan_notasi_latex():
+    for tahap in ("guiding", "hint", "reveal"):
+        prompt = build_system_prompt(tahap)
+        assert "LaTeX" in prompt
+        assert "$...$" in prompt
