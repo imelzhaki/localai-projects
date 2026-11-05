@@ -153,6 +153,16 @@ def test_get_sales_by_product_not_found(tmp_path, monkeypatch):
     assert hasil == []
 
 
+def test_get_sales_years(tmp_path, monkeypatch):
+    db_path = tmp_path / "test.db"
+    monkeypatch.setattr("database.DB_PATH", db_path)
+    monkeypatch.setattr("tools.DB_PATH", db_path)
+    init_db()
+    tahun = tools.get_sales_years()
+    assert isinstance(tahun, list)
+    assert "2024" in tahun
+
+
 def test_get_sales_order_items_by_order(tmp_path, monkeypatch):
     db_path = tmp_path / "test.db"
     monkeypatch.setattr("database.DB_PATH", db_path)

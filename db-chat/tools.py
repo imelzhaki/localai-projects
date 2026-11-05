@@ -277,6 +277,14 @@ def get_database_stats():
     return stats
 
 
+def get_sales_years():
+    """Tahun-tahun yang terdapat data penjualan (distinct tahun dari Sales_Order)."""
+    rows = execute_query(
+        "SELECT DISTINCT strftime('%Y', tanggal) AS tahun FROM Sales_Order ORDER BY tahun"
+    )
+    return [r["tahun"] for r in rows]
+
+
 # Peta nama alat ke fungsi, untuk dieksekusi oleh ollama_client
 execute_tool_map = {
     "get_sales_data": get_sales_data,
@@ -293,6 +301,7 @@ execute_tool_map = {
     "get_sales_order_items": get_sales_order_items,
     "get_sales_by_product": get_sales_by_product,
     "get_database_stats": get_database_stats,
+    "get_sales_years": get_sales_years,
 }
 
 
@@ -509,6 +518,18 @@ TOOLS = [
         "function": {
             "name": "get_database_stats",
             "description": "Statistik ringkasan database: jumlah baris per tabel. Gunakan untuk mengetahui jumlah data di setiap tabel.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_sales_years",
+            "description": "Tahun-tahun yang terdapat data penjualan (distinct tahun dari Sales_Order). Gunakan untuk pertanyaan tentang tahun penjualan.",
             "parameters": {
                 "type": "object",
                 "properties": {},
