@@ -6,6 +6,7 @@ from ollama_client import chat_stream
 from socratic_prompt import build_system_prompt
 from geometry_viz import (
     create_triangle_figure,
+    create_triangle_from_sides,
     create_quadrilateral_figure,
     create_circle_figure,
     create_cube_figure,
@@ -119,8 +120,13 @@ def handle_user_input():
         with st.chat_message("assistant"):
             st.caption(f"📐 Gambar {geometry_req.shape}:")
             if geometry_req.shape == "segitiga":
-                points = default_points_for_shape("segitiga")
-                fig = create_triangle_figure(points)
+                dims = geometry_req.parameters.get("dimensions", [])
+                if len(dims) >= 3:
+                    fig = create_triangle_from_sides(dims[0], dims[1], dims[2])
+                    st.caption(f"📐 Segitiga dengan sisi: {dims[0]}, {dims[1]}, {dims[2]}")
+                else:
+                    points = default_points_for_shape("segitiga")
+                    fig = create_triangle_figure(points)
                 st.plotly_chart(fig, use_container_width=True)
             elif geometry_req.shape == "segiempat":
                 points = default_points_for_shape("segiempat")

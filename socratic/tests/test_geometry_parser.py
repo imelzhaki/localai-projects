@@ -3,7 +3,12 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from geometry_parser import parse_geometry_request, GeometryRequest, default_points_for_shape
+from geometry_parser import (
+    parse_geometry_request,
+    GeometryRequest,
+    default_points_for_shape,
+    extract_numbers,
+)
 
 
 def test_parse_geometry_request_segitiga_sama_kaki():
@@ -63,3 +68,20 @@ def test_default_points_for_shape_segiempat():
 def test_default_points_for_shape_tidak_dikenal():
     points = default_points_for_shape("lingkaran")
     assert points is None
+
+
+def test_extract_numbers_dari_input_segitiga():
+    nums = extract_numbers("segitiga dengan sisi 1cm, 2cm, 3cm")
+    assert nums == [1.0, 2.0, 3.0]
+
+
+def test_extract_numbers_dari_input_bola():
+    nums = extract_numbers("bola berdiameter 1 meter")
+    assert nums == [1.0]
+
+
+def test_parse_geometry_request_segitiga_dengan_dimensi():
+    req = parse_geometry_request("gambarkan segitiga dengan sisi 1cm, 2cm, 3cm")
+    assert req.action == "gambar"
+    assert req.shape == "segitiga"
+    assert req.parameters.get("dimensions") == [1.0, 2.0, 3.0]

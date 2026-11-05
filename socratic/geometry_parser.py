@@ -7,6 +7,7 @@ Contoh input yang terdeteksi:
 - "kubus 3D"
 """
 
+import re
 from dataclasses import dataclass, field
 
 
@@ -14,7 +15,7 @@ from dataclasses import dataclass, field
 class GeometryRequest:
     """Hasil parsing permintaan geometri dari user."""
 
-    shape: str | None = None  # "segitiga" | "segiempat" | "lingkaran" | "kubus" | None
+    shape: str | None = None  # "segitiga" | "segiempat" | "lingkaran" | "kubus" | "bola" | None
     action: str | None = None  # "gambar" | None
     parameters: dict = field(default_factory=dict)
 
@@ -36,6 +37,15 @@ def _contains_any(text: str, keywords: tuple[str, ...]) -> bool:
     return any(kw in text for kw in keywords)
 
 
+def extract_numbers(text: str) -> list[float]:
+    """Ekstrak semua angka (desimal) dari teks input user.
+
+    Contoh: "segitiga dengan sisi 1cm, 2cm, 3cm" -> [1.0, 2.0, 3.0]
+    """
+    angka = re.findall(r"\d+(?:[.,]\d+)?", text)
+    return [float(a.replace(",", ".")) for a in angka]
+
+
 def parse_geometry_request(user_input: str) -> GeometryRequest:
     """Parsing input user untuk mendeteksi permintaan gambar geometri.
 
@@ -51,7 +61,11 @@ def parse_geometry_request(user_input: str) -> GeometryRequest:
     # Deteksi bentuk geometri
     for shape, keywords in SHAPE_KEYWORDS.items():
         if _contains_any(text, keywords):
-            return GeometryRequest(shape=shape, action="gambar")
+            params = {}
+            nums = extract_numbers(text)
+            if nums:
+                params["dimensions"] = nums
+            return GeometryRequest(shape=shape, action="gambar", parameters=params)
 
     # Jika ada kata "gambar" tapi bentuk tidak dikenali
     return GeometryRequest(action="gambar")
