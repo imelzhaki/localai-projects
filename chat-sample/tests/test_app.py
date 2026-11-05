@@ -106,12 +106,15 @@ def test_handle_user_input_tanpa_url_tidak_sisipkan_sistem(monkeypatch):
     assert all(m["role"] != "system" for m in kirim_ke_model)
 
 
-def test_handle_user_input_url_tanpa_konten_tidak_sisipkan_sistem(monkeypatch):
-    """URL ditemukan tapi konten kosong → tidak ada pesan sistem, peringatan ditampilkan."""
+def test_handle_user_input_semua_url_gagal_tidak_dikirim_ke_llm(monkeypatch):
+    """Semua URL gagal di-fetch → st.error ditampilkan, tidak dikirim ke LLM."""
 
-    peringatan = []
+    pesan_error = []
+    terpanggil_llm = False
 
     def fake_chat_stream(messages, model="llama3.2:3b"):
+        nonlocal terpanggil_llm
+        terpanggil_llm = True
         yield "Balasan tiruan"
 
     monkeypatch.setattr("app.chat_stream", fake_chat_stream)
@@ -144,15 +147,16 @@ def test_handle_user_input_url_tanpa_konten_tidak_sisipkan_sistem(monkeypatch):
     monkeypatch.setattr("app.st.chat_message", lambda role: PalsuChatMessage())
     monkeypatch.setattr("app.st.markdown", lambda *a, **k: None)
     monkeypatch.setattr("app.st.info", lambda *a, **k: None)
-    monkeypatch.setattr("app.st.warning", lambda *a, **k: peringatan.append(a[0]))
-    monkeypatch.setattr("app.st.error", lambda *a, **k: None)
+    monkeypatch.setattr("app.st.warning", lambda *a, **k: None)
+    monkeypatch.setattr("app.st.error", lambda *a, **k: pesan_error.append(a[0]))
     monkeypatch.setattr("app.st.write_stream", lambda gen: list(gen)[-1])
     monkeypatch.setattr("app.save_history", lambda messages: None)
 
     app.handle_user_input()
 
-    assert len(peringatan) >= 1
-    assert "gagal.com" in peringatan[0]
+    assert len(pesan_error) >= 1
+    assert "Tidak dapat mengambil konten" in pesan_error[0]
+    assert not terpanggil_llm, "LLM tidak boleh dipanggil saat semua URL gagal"
 
 
 def test_handle_user_input_url_dengan_konten_sisipkan_sistem(monkeypatch):

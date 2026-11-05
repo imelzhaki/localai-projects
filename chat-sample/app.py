@@ -105,12 +105,29 @@ def handle_user_input():
             # Perbarui pesan user di session state agar konten tersimpan
             st.session_state.messages[-1] = user_message
 
+        if gagal and not sukses:
+            # Semua URL gagal di-fetch: jangan kirim prompt asli ke LLM,
+            # karena LLM akan menanggapi dari data latih (bukan konten web)
+            daftar_gagal = "; ".join(
+                f"{u['url']} ({u['error']})" for u in gagal
+            )
+            st.error(
+                "Tidak dapat mengambil konten dari halaman web. "
+                "Silakan periksa URL atau coba lagi nanti."
+            )
+            logger.error(
+                "Semua %d URL gagal di-fetch, tidak mengirim ke LLM: %s",
+                len(gagal),
+                daftar_gagal,
+            )
+            return
+
         if gagal:
             daftar_gagal = "; ".join(
                 f"{u['url']} ({u['error']})" for u in gagal
             )
-            st.warning(f"Gagal membuka halaman: {daftar_gagal}")
-            logger.warning("Gagal membuka %d URL: %s", len(gagal), daftar_gagal)
+            st.warning(f"Beberapa halaman gagal dibuka: {daftar_gagal}")
+            logger.warning("Beberapa URL gagal di-fetch: %s", daftar_gagal)
 
     # Ambil snapshot pesan SETELAH konten web di-injeksi, agar LLM menerima konten terbaru
     model_messages = list(st.session_state.messages)
