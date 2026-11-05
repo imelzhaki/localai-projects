@@ -69,8 +69,9 @@ def test_get_supplier_by_id(tmp_path, monkeypatch):
 def test_tools_schemas_are_valid():
     """Setiap alat dalam TOOLS memiliki nama, deskripsi, dan parameter."""
     for alat in tools.TOOLS:
-        assert "name" in alat
-        assert "description" in alat
-        assert "parameters" in alat
-        assert "type" in alat["parameters"]
-        assert "properties" in alat["parameters"]
+        fn = alat["function"]
+        assert "name" in fn
+        assert "description" in fn
+        assert "parameters" in fn
+        assert "type" in fn["parameters"]
+        assert "properties" in fn["parameters"]
