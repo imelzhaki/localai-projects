@@ -64,10 +64,13 @@ def chat_with_tools(messages, tools=TOOLS, model=MODEL):
                 name = tool_call["function"]["name"]
                 arguments_raw = tool_call["function"].get("arguments", "{}")
                 tool_call_id = tool_call.get("id")
-            try:
-                arguments = json.loads(arguments_raw)
-            except json.JSONDecodeError:
-                arguments = {}
+            if isinstance(arguments_raw, dict):
+                arguments = arguments_raw
+            else:
+                try:
+                    arguments = json.loads(arguments_raw)
+                except (json.JSONDecodeError, TypeError):
+                    arguments = {}
             daftar_panggilan.append((name, arguments))
             logger.info("Model memanggil alat %s dengan argumen %s", name, arguments)
 
