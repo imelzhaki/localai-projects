@@ -38,7 +38,8 @@ _SYSTEM_PROMPT = """Anda adalah asisten database kantor. Aturan ketat:
 6. Jawab dalam Bahasa Indonesia.
 7. Jika user meminta "semua penjualan" atau "penjualan bulan terakhir" tanpa menyebutkan kategori, panggil get_sales_data TANPA parameter kategori (biarkan kosong). JANGAN menebak atau mengarang nama kategori. Kategori yang valid: Elektronik, Aksesori, Komputer.
 8. Laporan hasil alat secara utuh dan tepat. JANGAN menambahkan komentar, interpretasi, atau informasi tambahan yang tidak ada dalam hasil alat. Sampaikan apa yang dikembalikan alat, tidak lebih dan tidak kurang.
-9. Hanya kirim parameter yang didefinisikan dalam skema alat. JANGAN menambahkan parameter yang tidak ada (contoh: jangan kirim "category" pada get_sales_by_product yang hanya menerima nama_produk dan month)."""
+9. Hanya kirim parameter yang didefinisikan dalam skema alat. JANGAN menambahkan parameter yang tidak ada (contoh: jangan kirim "category" pada get_sales_by_product yang hanya menerima nama_produk dan month).
+10. JANGAN kirim parameter dengan nilai kosong (string kosong "" atau null). Jika tidak ada nilai yang bermakna, biarkan parameter tersebut tidak dikirim sama sekali."""
 
 def chat_with_tools(messages, tools=TOOLS, model=MODEL):
     """Kirim pesan ke Ollama dengan dukungan tool calling.

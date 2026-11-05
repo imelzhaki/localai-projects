@@ -240,6 +240,11 @@ def get_sales_order_items(order_id=None):
 
 def get_sales_by_product(nama_produk=None, month=None):
     """Data penjualan untuk produk tertentu (nama produk, jumlah terjual, total omset, tanggal)."""
+    # Normalisasi: string kosong treated as None
+    if nama_produk == "":
+        nama_produk = None
+    if month == "":
+        month = None
     conditions = []
     params = []
     if nama_produk:
