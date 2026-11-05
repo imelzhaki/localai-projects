@@ -74,11 +74,22 @@ def build_index(docs, persist_dir="data/chroma_db"):
     )
 
 
-def retrieve_schema_docs(question, top_k=3, persist_dir="data/chroma_db"):
+def retrieve_schema_docs(
+    question, top_k=3, persist_dir="data/chroma_db", schema_docs=None
+):
     """Ambil top-K dokumen skema yang relevan dengan pertanyaan.
 
     Jika sentence-transformers atau koleksi ChromaDB tidak tersedia,
     mengembalikan daftar kosong (degrade gracefully).
+
+    Args:
+        question: Pertanyaan pengguna.
+        top_k: Jumlah dokumen teratas yang diambil.
+        persist_dir: Direktori penyimpanan ChromaDB.
+        schema_docs: Daftar dokumen skema lengkap (dari build_schema_docs).
+                     Jika None, akan dipanggil build_schema_docs() (untuk
+                     kompatibilitas mundur, tapi disarankan melewatkan cache
+                     dari session state agar tidak introspeksi DB berulang).
     """
     model = _get_model()
     if model is None:
@@ -111,8 +122,11 @@ def retrieve_schema_docs(question, top_k=3, persist_dir="data/chroma_db"):
         table = results["metadatas"][0][i]["table"]
         retrieved_tables.append(table)
 
-    all_docs = build_schema_docs()
-    docs_by_table = {doc["table"]: doc for doc in all_docs}
+    # Gunakan schema_docs yang diberikan (cache dari session state) atau
+    # bangun baru jika tidak tersedia (fallback untuk kompatibilitas mundur).
+    if schema_docs is None:
+        schema_docs = build_schema_docs()
+    docs_by_table = {doc["table"]: doc for doc in schema_docs}
 
     docs = []
     for table in retrieved_tables:

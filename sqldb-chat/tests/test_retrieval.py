@@ -97,3 +97,56 @@ def test_retrieve_schema_docs_returns_top_k(tmp_path, monkeypatch):
     )
 
     assert len(results) <= 2
+
+
+def test_retrieve_schema_docs_uses_provided_schema_docs(tmp_path, monkeypatch):
+    """retrieve_schema_docs harus menggunakan schema_docs yang diberikan
+    tanpa memanggil build_schema_docs() lagi (cache dari session state)."""
+    db_path = tmp_path / "test.db"
+    monkeypatch.setattr("database.DB_PATH", db_path)
+    monkeypatch.setattr("schema.DB_PATH", db_path)
+    monkeypatch.setattr("retrieval.DB_PATH", db_path)
+    model = FakeModel()
+    monkeypatch.setattr("retrieval._get_model", lambda: model)
+    init_db()
+
+    docs = schema.build_schema_docs()
+    all_texts = []
+    for d in docs:
+        all_texts.append(
+            f"Tabel: {d['table']}. Tujuan: {d['purpose']}. "
+            f"Kolom: {'; '.join(d['columns'])}."
+        )
+    all_texts.append("customer di Jakarta")
+    model.encode(all_texts)
+
+    index_path = tmp_path / "chroma3"
+    retrieval.build_index(docs, persist_dir=str(index_path))
+
+    # Tandai build_schema_docs sebagai dipanggil atau tidak
+    build_called = {"count": 0}
+    original_build = schema.build_schema_docs
+
+    def counting_build():
+        build_called["count"] += 1
+        return original_build()
+
+    monkeypatch.setattr("schema.build_schema_docs", counting_build)
+
+    # Panggil dengan schema_docs yang diberikan -> build_schema_docs tidak boleh dipanggil
+    results = retrieval.retrieve_schema_docs(
+        "customer di Jakarta",
+        top_k=3,
+        persist_dir=str(index_path),
+        schema_docs=docs,
+    )
+
+    assert build_called["count"] == 0, (
+        "build_schema_docs tidak boleh dipanggil ketika schema_docs sudah disediakan"
+    )
+    assert isinstance(results, list)
+    assert len(results) > 0
+    for r in results:
+        assert "table" in r
+        assert "purpose" in r
+        assert r["table"] in {d["table"] for d in docs}

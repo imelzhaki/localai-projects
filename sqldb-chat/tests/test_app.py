@@ -22,7 +22,7 @@ def test_process_question_returns_result_dict(monkeypatch, tmp_path):
     monkeypatch.setattr(
         app,
         "retrieve_schema_docs",
-        lambda question, top_k=3: [
+        lambda question, top_k=3, schema_docs=None: [
             {
                 "table": "Customer",
                 "document": "Tabel: Customer. Tujuan: Tabel pelanggan. Kolom: customer_id: ID, nama: Nama, kota: Kota.",
@@ -82,7 +82,7 @@ def test_process_question_handles_validation_error(monkeypatch, tmp_path):
     monkeypatch.setattr(
         app,
         "retrieve_schema_docs",
-        lambda question, top_k=3: [],
+        lambda question, top_k=3, schema_docs=None: [],
     )
     monkeypatch.setattr(
         app,

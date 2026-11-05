@@ -89,8 +89,10 @@ def process_question(question):
     schema_docs = _get_schema_docs()
     fewshot_examples = _get_fewshot_examples()
 
-    # 1. Retrieve skema yang relevan
-    retrieved = retrieve_schema_docs(question, top_k=3)
+    # 1. Retrieve skema yang relevan (gunakan cache dari session state
+    #    agar tidak introspeksi database berulang kali)
+    schema_docs = _get_schema_docs()
+    retrieved = retrieve_schema_docs(question, top_k=3, schema_docs=schema_docs)
 
     # 2. Generate SQL via llama3.2:3b
     sql = generate_sql(question, schema_docs, fewshot_examples)
