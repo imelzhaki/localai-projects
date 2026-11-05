@@ -155,6 +155,37 @@ def get_supplier(supplier_id=None, nama=None):
 
 
 def list_customers():
+    """Daftar semua pelanggan (ID, nama, kota, telepon, email)."""
+    return execute_query(
+        "SELECT customer_id, nama, kota, telepon, email FROM Customer ORDER BY nama"
+    )
+
+
+def list_sales_orders():
+    """Daftar semua pesanan penjualan (ID, tanggal, total, status, pelanggan)."""
+    return execute_query(
+        """
+        SELECT so.order_id, so.tanggal, so.total, so.status, c.nama AS pelanggan
+        FROM Sales_Order so
+        JOIN Customer c ON c.customer_id = so.customer_id
+        ORDER BY so.tanggal DESC
+        """
+    )
+
+
+def list_purchase_orders():
+    """Daftar semua pesanan pembelian (ID, tanggal, total, status, supplier)."""
+    return execute_query(
+        """
+        SELECT po.order_id, po.tanggal, po.total, po.status, s.nama AS supplier
+        FROM Purchase_Order po
+        JOIN Supplier s ON s.supplier_id = po.supplier_id
+        ORDER BY po.tanggal DESC
+        """
+    )
+
+
+def list_customers():
     """Daftar semua pelanggan (nama dan kota)."""
     return execute_query(
         "SELECT customer_id, nama, kota, telepon, email FROM Customer ORDER BY nama"
@@ -170,6 +201,8 @@ execute_tool_map = {
     "get_purchase_order": get_purchase_order,
     "get_supplier": get_supplier,
     "list_customers": list_customers,
+    "list_sales_orders": list_sales_orders,
+    "list_purchase_orders": list_purchase_orders,
 }
 
 
@@ -284,6 +317,30 @@ TOOLS = [
         "function": {
             "name": "list_customers",
             "description": "Daftar semua pelanggan (ID, nama, kota, telepon, email). Gunakan untuk pertanyaan yang meminta daftar lengkap pelanggan.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_sales_orders",
+            "description": "Daftar semua pesanan penjualan (ID, tanggal, total, status, pelanggan). Gunakan untuk pertanyaan tentang daftar atau jumlah pesanan penjualan.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_purchase_orders",
+            "description": "Daftar semua pesanan pembelian (ID, tanggal, total, status, supplier). Gunakan untuk pertanyaan tentang daftar atau jumlah pesanan pembelian.",
             "parameters": {
                 "type": "object",
                 "properties": {},

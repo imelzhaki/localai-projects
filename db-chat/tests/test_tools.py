@@ -77,6 +77,28 @@ def test_list_customers(tmp_path, monkeypatch):
     assert all("nama" in r and "kota" in r for r in hasil)
 
 
+def test_list_sales_orders(tmp_path, monkeypatch):
+    db_path = tmp_path / "test.db"
+    monkeypatch.setattr("database.DB_PATH", db_path)
+    monkeypatch.setattr("tools.DB_PATH", db_path)
+    init_db()
+    hasil = tools.list_sales_orders()
+    assert isinstance(hasil, list)
+    assert len(hasil) == 25
+    assert all("order_id" in r and "total" in r and "pelanggan" in r for r in hasil)
+
+
+def test_list_purchase_orders(tmp_path, monkeypatch):
+    db_path = tmp_path / "test.db"
+    monkeypatch.setattr("database.DB_PATH", db_path)
+    monkeypatch.setattr("tools.DB_PATH", db_path)
+    init_db()
+    hasil = tools.list_purchase_orders()
+    assert isinstance(hasil, list)
+    assert len(hasil) == 15
+    assert all("order_id" in r and "total" in r and "supplier" in r for r in hasil)
+
+
 def test_tools_schemas_are_valid():
     """Setiap alat dalam TOOLS memiliki nama, deskripsi, dan parameter."""
     for alat in tools.TOOLS:
