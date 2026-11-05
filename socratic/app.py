@@ -10,6 +10,7 @@ from geometry_viz import (
     create_circle_figure,
     create_cube_figure,
 )
+from geometry_parser import parse_geometry_request, default_points_for_shape
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +111,26 @@ def handle_user_input():
             st.session_state.question_count,
             st.session_state.stage,
         )
+
+    # Gambar geometri jika user memintanya (contoh: "gambarkan segitiga sama kaki")
+    geometry_req = parse_geometry_request(prompt)
+    if geometry_req.action == "gambar" and geometry_req.shape:
+        with st.chat_message("assistant"):
+            st.caption(f"📐 Gambar {geometry_req.shape}:")
+            if geometry_req.shape == "segitiga":
+                points = default_points_for_shape("segitiga")
+                fig = create_triangle_figure(points)
+                st.plotly_chart(fig, use_container_width=True)
+            elif geometry_req.shape == "segiempat":
+                points = default_points_for_shape("segiempat")
+                fig = create_quadrilateral_figure(points)
+                st.plotly_chart(fig, use_container_width=True)
+            elif geometry_req.shape == "lingkaran":
+                fig = create_circle_figure((0, 0), 2)
+                st.plotly_chart(fig, use_container_width=True)
+            elif geometry_req.shape == "kubus":
+                fig = create_cube_figure()
+                st.plotly_chart(fig, use_container_width=True)
 
 
 def render_geometry_visualizer():
