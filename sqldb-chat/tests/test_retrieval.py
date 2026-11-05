@@ -74,7 +74,9 @@ def test_retrieve_schema_docs_returns_relevant_table(tmp_path, monkeypatch):
     assert len(results) > 0
     for r in results:
         assert "table" in r
-        assert "document" in r
+        assert "purpose" in r
+        assert "columns" in r
+        assert "value_legend" in r
         assert r["table"] in {d["table"] for d in docs}
 
 

@@ -3,6 +3,8 @@ from pathlib import Path
 
 import chromadb
 
+from schema import build_schema_docs
+
 logger = logging.getLogger(__name__)
 
 DB_PATH = Path("data/sqldb-chat.db")
@@ -102,12 +104,20 @@ def retrieve_schema_docs(question, top_k=3, persist_dir="data/chroma_db"):
         include=["documents", "metadatas"],
     )
 
-    docs = []
+    # Ambil nama tabel dari ChromaDB, lalu lengkapi dengan detail skema penuh
+    # (purpose, columns, value_legend) agar critic dapat mengaksesnya.
+    retrieved_tables = []
     for i in range(len(results["ids"][0])):
         table = results["metadatas"][0][i]["table"]
-        docs.append(
-            {"table": table, "document": results["documents"][0][i]}
-        )
+        retrieved_tables.append(table)
+
+    all_docs = build_schema_docs()
+    docs_by_table = {doc["table"]: doc for doc in all_docs}
+
+    docs = []
+    for table in retrieved_tables:
+        if table in docs_by_table:
+            docs.append(docs_by_table[table])
 
     logger.info(
         "Diambil %d dokumen skema untuk pertanyaan: %s", len(docs), question
