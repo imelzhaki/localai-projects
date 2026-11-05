@@ -202,3 +202,111 @@ def test_handle_user_input_url_dengan_konten_sisipkan_sistem(monkeypatch):
     assert len(user_msgs) >= 1
     assert "Konten dari contoh.com" in user_msgs[0]["content"]
     assert all(m["role"] != "system" for m in kirim_ke_model)
+
+
+def test_handle_user_input_reset_menghapus_riwayat(monkeypatch):
+    """Perintah /reset menghapus semua riwayat percakapan."""
+
+    pesan_dihapus = []
+
+    def fake_save_history(messages):
+        pesan_dihapus.extend(messages)
+
+    monkeypatch.setattr("app.save_history", fake_save_history)
+    monkeypatch.setattr("app.st.chat_input", lambda *a, **k: "/reset")
+
+    app.st.session_state = SimpleNamespace(messages=[{"role": "user", "content": "Halo"}])
+
+    class PalsuChatMessage:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    monkeypatch.setattr("app.st.chat_message", lambda role: PalsuChatMessage())
+    monkeypatch.setattr("app.st.markdown", lambda *a, **k: None)
+    monkeypatch.setattr("app.st.info", lambda *a, **k: None)
+    monkeypatch.setattr("app.st.error", lambda *a, **k: None)
+    monkeypatch.setattr("app.st.success", lambda *a, **k: None)
+    monkeypatch.setattr("app.st.write_stream", lambda gen: list(gen)[-1])
+
+    app.handle_user_input()
+
+    assert app.st.session_state.messages == []
+    assert pesan_dihapus == []
+
+
+def test_handle_user_input_clear_menghapus_riwayat(monkeypatch):
+    """Perintah /clear juga menghapus semua riwayat percakapan."""
+
+    pesan_dihapus = []
+
+    def fake_save_history(messages):
+        pesan_dihapus.extend(messages)
+
+    monkeypatch.setattr("app.save_history", fake_save_history)
+    monkeypatch.setattr("app.st.chat_input", lambda *a, **k: "/clear")
+
+    app.st.session_state = SimpleNamespace(messages=[{"role": "user", "content": "Halo"}])
+
+    class PalsuChatMessage:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    monkeypatch.setattr("app.st.chat_message", lambda role: PalsuChatMessage())
+    monkeypatch.setattr("app.st.markdown", lambda *a, **k: None)
+    monkeypatch.setattr("app.st.info", lambda *a, **k: None)
+    monkeypatch.setattr("app.st.error", lambda *a, **k: None)
+    monkeypatch.setattr("app.st.success", lambda *a, **k: None)
+    monkeypatch.setattr("app.st.write_stream", lambda gen: list(gen)[-1])
+
+    app.handle_user_input()
+
+    assert app.st.session_state.messages == []
+    assert pesan_dihapus == []
+
+
+def test_handle_user_input_summary_buat_ringkasan(monkeypatch):
+    """Perintah /summary membuat ringkasan percakapan."""
+
+    kirim_ke_model = []
+
+    def fake_chat_stream(messages, model="llama3.2:3b"):
+        kirim_ke_model.extend(messages)
+        yield "Ini adalah ringkasan tiruan."
+
+    monkeypatch.setattr("app.chat_stream", fake_chat_stream)
+    monkeypatch.setattr("app.st.chat_input", lambda *a, **k: "/summary")
+
+    app.st.session_state = SimpleNamespace(
+        messages=[
+            {"role": "user", "content": "Halo"},
+            {"role": "assistant", "content": "Halo juga, ada yang bisa saya bantu?"},
+        ]
+    )
+
+    class PalsuChatMessage:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    monkeypatch.setattr("app.st.chat_message", lambda role: PalsuChatMessage())
+    monkeypatch.setattr("app.st.markdown", lambda *a, **k: None)
+    monkeypatch.setattr("app.st.info", lambda *a, **k: None)
+    monkeypatch.setattr("app.st.error", lambda *a, **k: None)
+    monkeypatch.setattr("app.st.write_stream", lambda gen: list(gen)[-1])
+    monkeypatch.setattr("app.save_history", lambda messages: None)
+
+    app.handle_user_input()
+
+    # Harus ada pesan user dengan instruksi ringkasan di akhir
+    assert len(kirim_ke_model) >= 3  # 2 pesan asli + 1 instruksi ringkasan
+    instruksi = kirim_ke_model[-1]
+    assert instruksi["role"] == "user"
+    assert "ringkasan" in instruksi["content"].lower()

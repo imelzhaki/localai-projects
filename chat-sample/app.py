@@ -32,6 +32,48 @@ def handle_user_input():
     if not prompt:
         return
 
+    perintah = prompt.strip().lower()
+
+    # Perintah /reset atau /clear: hapus riwayat percakapan
+    if perintah in ("/reset", "/clear"):
+        st.session_state.messages = []
+        save_history([])
+        st.success("Riwayat percakapan telah dihapus. Konteks telah disegarkan.")
+        logger.info("Riwayat percakapan dihapus oleh user melalui perintah %s", perintah)
+        return
+
+    # Perintah /summary: buat ringkasan percakapan
+    if perintah == "/summary":
+        if not st.session_state.messages:
+            st.info("Belum ada percakapan untuk diringkas.")
+            logger.info("User meminta ringkasan tetapi riwayat kosong")
+            return
+
+        logger.info("Membuat ringkasan percakapan dengan %d pesan", len(st.session_state.messages))
+        pesan_ringkasan = list(st.session_state.messages) + [
+            {
+                "role": "user",
+                "content": (
+                    "Buatlah ringkasan ringkas dari percakapan di atas dalam Bahasa Indonesia. "
+                    "Sertakan poin-poin penting yang dibahas dan kesimpulan jika ada."
+                ),
+            }
+        ]
+        with st.chat_message("assistant"):
+            try:
+                response = st.write_stream(chat_stream(pesan_ringkasan))
+                logger.info("Ringkasan diterima dari LLM, panjang: %d karakter", len(response or ""))
+            except Exception as exc:
+                logger.error("Gagal membuat ringkasan: %s", exc)
+                st.error(f"Gagal membuat ringkasan: {exc}")
+                response = ""
+
+        if response:
+            assistant_message = build_assistant_message(response)
+            st.session_state.messages.append(assistant_message)
+            save_history(st.session_state.messages)
+        return
+
     user_message = build_user_message(prompt)
     st.session_state.messages.append(user_message)
     with st.chat_message("user"):

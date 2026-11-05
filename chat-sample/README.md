@@ -52,6 +52,27 @@ Jika pengambilan halaman gagal (situs memblokir, tidak dapat diakses, atau bukan
 
 Anda dapat menyertakan beberapa URL dalam satu pesan.
 
+## Perintah Khusus
+
+Ketik perintah berikut dalam kotak percakapan:
+
+| Perintah | Fungsi |
+|----------|--------|
+| `/reset` | Menghapus semua riwayat percakapan dan menggambar konteks |
+| `/clear` | Sama dengan `/reset` |
+| `/summary` | Membuat ringkasan dari seluruh percakapan yang telah terjadi |
+
+Contoh:
+```
+/reset
+```
+Riwayat percakapan akan dihapus sepenuhnya, termasuk file `data/history.json`.
+
+```
+/summary
+```
+Model akan membuat ringkasan ringkas dari semua pesan yang telah dipertukarkan dalam sesi ini.
+
 ## Struktur Proyek
 
 ```
@@ -87,7 +108,7 @@ chat-sample/
 pytest tests/ -v
 ```
 
-Harapan: 23 tes lulus (3 history + 2 ollama_client + 6 app + 12 web_fetcher).
+Harapan: 26 tes lulus (3 history + 2 ollama_client + 9 app + 12 web_fetcher).
 
 ## Troubleshooting
 
