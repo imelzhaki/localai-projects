@@ -2,6 +2,7 @@ import streamlit as st
 
 from history import load_history, save_history
 from ollama_client import chat_stream
+from web_fetcher import fetch_urls_in_text
 
 
 def build_user_message(content):
@@ -33,9 +34,24 @@ def handle_user_input():
     with st.chat_message("user"):
         st.markdown(prompt)
 
+    # Deteksi URL dalam pesan user dan muat konten halaman sebagai konteks
+    url_content, urls = fetch_urls_in_text(prompt)
+    model_messages = list(st.session_state.messages)
+    if urls:
+        st.info(f"Membuka {len(urls)} halaman: {', '.join(urls)}")
+        konteks_url = {
+            "role": "system",
+            "content": (
+                "Berikut adalah konten dari halaman web yang disebutkan user. "
+                "Gunakan konten ini untuk menjawab pertanyaan user.\n\n"
+                f"{url_content}"
+            ),
+        }
+        model_messages = [konteks_url] + model_messages
+
     with st.chat_message("assistant"):
         try:
-            response = st.write_stream(chat_stream(st.session_state.messages))
+            response = st.write_stream(chat_stream(model_messages))
         except Exception as exc:
             st.error(f"Gagal terhubung ke Ollama: {exc}")
             response = ""

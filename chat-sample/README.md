@@ -10,6 +10,7 @@ bertahan setelah aplikasi di-restart.
 - Streaming respons token-per-token dari model `llama3.2:3b`
 - Riwayat percakapan diingat dalam satu sesi (model melihat pesan sebelumnya)
 - Persistensi riwayat ke `data/history.json` (bertahan setelah restart)
+- **Membuka dan membaca konten halaman web dari URL yang disertakan user dalam percakapan**
 - Penanganan kesalahan jika Ollama tidak terhubung atau model tidak ditemukan
 
 ## Prasyarat
@@ -33,6 +34,22 @@ streamlit run app.py
 
 Buka URL yang dicetak Streamlit (biasanya http://localhost:8501).
 
+## Cara Menggunakan Fitur URL
+
+Tempelkan URL langsung dalam kotak percakapan, misalnya:
+
+```
+Baca https://example.com dan ringkas isinya
+```
+
+Aplikasi akan:
+1. Mendeteksi URL dalam pesan Anda
+2. Membuka halaman web dan mengekstrak teksnya
+3. Menyisipkan konten halaman sebagai konteks untuk model
+4. Menjawab pertanyaan Anda berdasarkan konten halaman tersebut
+
+Anda dapat menyertakan beberapa URL dalam satu pesan.
+
 ## Struktur Proyek
 
 ```
@@ -40,23 +57,27 @@ chat-sample/
 ├── app.py              # Titik masuk Streamlit: UI, riwayat sesi, streaming, persistensi
 ├── history.py          # Muat/simpan riwayat chat ke data/history.json
 ├── ollama_client.py    # Pembungkus streaming ollama.Client.chat(stream=True)
+├── web_fetcher.py      # Deteksi URL dan pengambilan konten halaman web
 ├── requirements.txt    # Dependensi Python (streamlit, ollama)
 ├── .gitignore          # Abaikan __pycache__, *.pyc, data/
 ├── README.md           # Dokumentasi ini
 └── tests/
     ├── test_app.py           # Tes untuk app.py
     ├── test_history.py       # Tes untuk history.py
-    └── test_ollama_client.py # Tes untuk ollama_client.py
+    ├── test_ollama_client.py # Tes untuk ollama_client.py
+    └── test_web_fetcher.py   # Tes untuk web_fetcher.py
 ```
 
 ## Cara Kerja
 
 1. User mengetik pesan di `st.chat_input` dan tekan Enter
 2. Pesan user ditambahkan ke riwayat `session_state` dan ditampilkan
-3. Riwayat lengkap dikirim ke `ollama_client.chat_stream(messages)` yang menghasilkan potongan teks
-4. Potongan di-stream ke `st.chat_message("assistant")` melalui `st.write_stream`
-5. Respons asisten lengkap disimpan ke riwayat dan ke `data/history.json`
-6. Saat aplikasi dimuat ulang, riwayat dipulihkan dari `data/history.json`
+3. **Jika pesan mengandung URL, aplikasi secara otomatis membuka halaman web dan mengekstrak teksnya melalui `web_fetcher.py`**
+4. Konten halaman web disisipkan sebagai pesan sistem (konteks) bersama riwayat percakapan
+5. Riwayat lengkap (termasuk konten URL) dikirim ke `ollama_client.chat_stream(messages)` yang menghasilkan potongan teks
+6. Potongan di-stream ke `st.chat_message("assistant")` melalui `st.write_stream`
+7. Respons asisten lengkap disimpan ke riwayat dan ke `data/history.json`
+8. Saat aplikasi dimuat ulang, riwayat dipulihkan dari `data/history.json`
 
 ## Pengujian
 
@@ -64,7 +85,7 @@ chat-sample/
 pytest tests/ -v
 ```
 
-Harapan: 7 tes lulus (3 history + 2 ollama_client + 2 app).
+Harapan: 15 tes lulus (3 history + 2 ollama_client + 4 app + 6 web_fetcher).
 
 ## Troubleshooting
 
@@ -73,6 +94,7 @@ Harapan: 7 tes lulus (3 history + 2 ollama_client + 2 app).
 | Ollama tidak terhubung | Jalankan `ollama serve` terlebih dahulu |
 | Model `llama3.2:3b` tidak ditemukan | Jalankan `ollama pull llama3.2:3b` |
 | `streamlit` tidak dikenali | Jalankan `pip install -r requirements.txt` |
+| Konten halaman web tidak terbaca | Pastikan URL dapat diakses dan mengembalikan HTML; beberapa situs memblokir pengambilan otomatis |
 
 ## Lisensi
 
