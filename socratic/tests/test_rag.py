@@ -217,6 +217,13 @@ class TestInitializeRAG:
         mock_st = _mock_st_session_state(monkeypatch)
         mock_st.session_state.rag_collection = None
 
+        mock_collection = MagicMock()
+        mock_collection.count.return_value = 0
+        mock_collection.get.return_value = {"metadatas": []}
+        mock_client = MagicMock()
+        mock_client.get_or_create_collection.return_value = mock_collection
+        monkeypatch.setattr(rag.chromadb, "PersistentClient", lambda path: mock_client)
+
         collection = rag.initialize_rag(str(tmp_path / "kosong"))
         assert collection is None
 

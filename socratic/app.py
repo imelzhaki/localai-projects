@@ -16,7 +16,12 @@ CLASS_LEVELS = ["1", "2", "3"]
 
 
 def build_user_message(content):
-    return {"role": "user", "content": content}
+    """Bangun pesan user dengan instruksi tambahan untuk mencegah halusinasi."""
+    return {
+        "role": "user",
+        "content": content
+        + "\n\nCatatan: Jika Anda tidak tahu jawabannya atau informasi tidak tersedia dalam konteks, katakan saja 'saya tidak tahu'. JANGAN coba menjawab atau menebak."
+    }
 
 
 def build_assistant_message(content):
