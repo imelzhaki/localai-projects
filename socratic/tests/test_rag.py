@@ -28,6 +28,13 @@ class TestLoadDocuments:
         assert docs[0]["content"] == "Ini adalah materi contoh."
         assert "materi.txt" in docs[0]["source"]
 
+    def test_load_documents_muat_file_md(self, tmp_path):
+        (tmp_path / "materi.md").write_text("# Materi Contoh\n\nIni adalah markdown.", encoding="utf-8")
+        docs = rag.load_documents(str(tmp_path))
+        assert len(docs) == 1
+        assert docs[0]["content"] == "# Materi Contoh\n\nIni adalah markdown."
+        assert "materi.md" in docs[0]["source"]
+
     def test_load_documents_muat_file_pdf(self, tmp_path, monkeypatch):
         # Mock PdfReader agar mengembalikan halaman dengan teks
         mock_page = MagicMock()
@@ -50,6 +57,34 @@ class TestLoadDocuments:
         docs = rag.load_documents(str(tmp_path))
         assert len(docs) == 1
         assert docs[0]["content"] == "konten teks"
+
+
+class TestSanitizeText:
+    def test_sanitize_text_hapus_surrogate(self):
+        # Lone surrogate karakter yang menyebabkan tokenizer error
+        text = "Halo \udca1\ud83d dunia"
+        result = rag._sanitize_text(text)
+        assert "\udca1" not in result
+        assert "\ud83d" not in result
+        assert result == "Halo  dunia"
+
+    def test_sanitize_text_tidak_ubah_teks_normal(self):
+        text = "Ini teks biasa tanpa karakter aneh."
+        result = rag._sanitize_text(text)
+        assert result == text
+
+    def test_sanitize_text_hapus_kontrol(self):
+        text = "Teks\x00dengan\x07karakter\x1fkontrol"
+        result = rag._sanitize_text(text)
+        assert "\x00" not in result
+        assert "\x07" not in result
+        assert "\x1f" not in result
+        assert result == "Teksdengankarakterkontrol"
+
+    def test_sanitize_text_pertahankan_newline_tab(self):
+        text = "Baris 1\nBaris 2\tterindentasi"
+        result = rag._sanitize_text(text)
+        assert result == text
 
 
 class TestSplitText:

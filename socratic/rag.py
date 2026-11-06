@@ -6,6 +6,7 @@ berdasarkan pertanyaan siswa.
 """
 
 import logging
+import re
 from pathlib import Path
 from typing import Optional
 
@@ -20,6 +21,15 @@ EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 CHUNK_SIZE = 500
 CHUNK_OVERLAP = 50
 N_RESULTS = 3
+
+
+def _sanitize_text(text: str) -> str:
+    """Hapus karakter surrogate dan Unicode tidak valid yang menyebabkan tokenizer error."""
+    # Hapus lone surrogates (U+D800-U+DFFF) yang tidak valid dalam UTF-8
+    text = re.sub(r'[\ud800-\udfff]', '', text)
+    # Ganti karakter kontrol lain (kecuali newline/tab yang valid)
+    text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', text)
+    return text
 
 
 def _load_text_file(path: Path) -> str:
@@ -51,7 +61,7 @@ def load_documents(documents_dir: str = "documents") -> list[dict]:
         if not path.is_file():
             continue
         suffix = path.suffix.lower()
-        if suffix == ".txt":
+        if suffix in (".txt", ".md"):
             content = _load_text_file(path)
         elif suffix == ".pdf":
             content = _load_pdf_file(path)
@@ -89,6 +99,32 @@ def get_embedding_model() -> SentenceTransformer:
 
 def create_vector_store(chunks: list[str], metadatas: list[dict], collection_name: str = "curriculum"):
     """Buat vector store ChromaDB dari chunks teks."""
+    # Filter chunk yang tidak valid (None, bukan string, atau kosong)
+    valid_pairs = [
+        (c, m) for c, m in zip(chunks, metadatas)
+        if c is not None and isinstance(c, str) and c.strip()
+    ]
+    if not valid_pairs:
+        logger.warning("Tidak ada chunk valid untuk dibuat vector store")
+        client = chromadb.Client()
+        return client.create_collection(name=collection_name)
+
+    chunks, metadatas = zip(*valid_pairs)
+    chunks = list(chunks)
+    metadatas = list(metadatas)
+
+    # Sanitasi chunk untuk menghindari tokenizer error pada karakter surrogate
+    chunks = [_sanitize_text(c) for c in chunks]
+    # Buang chunk yang menjadi kosong setelah sanitasi
+    valid_pairs = [(c, m) for c, m in zip(chunks, metadatas) if c.strip()]
+    if not valid_pairs:
+        logger.warning("Tidak ada chunk valid setelah sanitasi")
+        client = chromadb.Client()
+        return client.create_collection(name=collection_name)
+    chunks, metadatas = zip(*valid_pairs)
+    chunks = list(chunks)
+    metadatas = list(metadatas)
+
     client = chromadb.Client()
     collection = client.create_collection(name=collection_name)
 
@@ -107,6 +143,7 @@ def create_vector_store(chunks: list[str], metadatas: list[dict], collection_nam
 def retrieve_context(query: str, collection, n_results: int = N_RESULTS) -> list[str]:
     """Ambil konteks relevan dari vector store berdasarkan query."""
     model = get_embedding_model()
+    query = _sanitize_text(query)
     query_embedding = model.encode([query]).tolist()
 
     results = collection.query(
@@ -138,14 +175,15 @@ def initialize_rag(documents_dir: str = "documents") -> Optional[object]:
     for doc in docs:
         doc_chunks = split_text(doc["content"])
         for chunk in doc_chunks:
-            chunks.append(chunk)
-            metadatas.append({"source": doc["source"]})
+            if chunk and chunk.strip():  # Lewati chunk kosong atau hanya whitespace
+                chunks.append(chunk)
+                metadatas.append({"source": doc["source"]})
 
     if not chunks:
         logger.warning("Tidak ada chunk yang dihasilkan dari dokumen di %s", documents_dir)
         return None
 
-    logger.info("Membuat vector store dari %d chunk", len(chunks))
+    logger.info("Membuat vector store dari %d chunk (dari %d dokumen)", len(chunks), len(docs))
     collection = create_vector_store(chunks, metadatas)
     st.session_state.rag_collection = collection
     logger.info("RAG diinisialisasi dengan %d chunk dari %d dokumen", len(chunks), len(docs))
