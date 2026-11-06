@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 CHUNK_SIZE = 500
 CHUNK_OVERLAP = 50
-N_RESULTS = 3
+N_RESULTS = 10
 
 CHROMA_DB_PATH = r"C:\Dev\Research\chromadb"
 COLLECTION_NAME = "curriculum"
@@ -198,7 +198,17 @@ def retrieve_context(query: str, collection, n_results: int = N_RESULTS) -> list
 
     documents = results.get("documents", [[]])
     if not documents or not documents[0]:
+        logger.info("Retrieval untuk query '%s': tidak ada hasil", query)
         return []
+
+    logger.info(
+        "Retrieval untuk query '%s': %d chunk ditemukan",
+        query,
+        len(documents[0]),
+    )
+    for i, doc in enumerate(documents[0]):
+        logger.debug("  Chunk %d: %s", i + 1, doc[:200])
+
     return documents[0]
 
 
@@ -261,10 +271,13 @@ def initialize_rag(documents_dir: str = "documents") -> Optional[object]:
 def get_rag_context(query: str, collection) -> str:
     """Dapatkan konteks RAG sebagai string untuk disisipkan ke system prompt."""
     if collection is None:
+        logger.warning("get_rag_context: collection is None")
         return ""
 
     relevant = retrieve_context(query, collection)
     if not relevant:
+        logger.info("get_rag_context: tidak ada konteks relevan untuk query '%s'", query)
         return ""
 
+    logger.info("get_rag_context: mengembalikan %d chunk konteks", len(relevant))
     return "\n\n".join(relevant)
