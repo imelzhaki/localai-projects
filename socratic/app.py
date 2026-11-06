@@ -159,12 +159,14 @@ def handle_user_input():
 
     # Susun system prompt sesuai tahap dan konteks kurikulum
     stage = st.session_state.stage
+    is_first = st.session_state.question_count == 0
     system_prompt = build_system_prompt(
         stage,
         school_level=st.session_state.school_level,
         class_level=st.session_state.class_level,
         subject=st.session_state.subject,
         rag_context=rag_context,
+        is_first=is_first,
     )
     model_messages = [{"role": "system", "content": system_prompt}] + list(
         st.session_state.messages
