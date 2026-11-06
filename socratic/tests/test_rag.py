@@ -170,7 +170,7 @@ class TestCreateVectorStore:
         mock_client = MagicMock()
         mock_client.get_or_create_collection.return_value = mock_collection
 
-        monkeypatch.setattr(rag.chromadb, "Client", lambda: mock_client)
+        monkeypatch.setattr(rag.chromadb, "PersistentClient", lambda path: mock_client)
         _mock_st_session_state(monkeypatch)
 
         mock_model = _mock_encode([[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]])
@@ -229,7 +229,7 @@ class TestInitializeRAG:
         mock_collection = MagicMock()
         mock_client = MagicMock()
         mock_client.get_or_create_collection.return_value = mock_collection
-        monkeypatch.setattr(rag.chromadb, "Client", lambda: mock_client)
+        monkeypatch.setattr(rag.chromadb, "PersistentClient", lambda path: mock_client)
 
         mock_model = _mock_encode([[0.1, 0.2, 0.3]])
         monkeypatch.setattr(rag, "get_embedding_model", lambda: mock_model)

@@ -74,12 +74,18 @@ def build_system_prompt(stage, school_level=None, class_level=None, subject=None
         curriculum_text = "\n\nKONTEKS KURIKULUM:\n" + "\n".join(curriculum_parts)
 
     # Tambahkan konteks RAG dari dokumen kurikulum
-    rag_text = ""
     if rag_context:
         rag_text = (
             "\n\nKONTEKS DARI DOKUMEN KURIKULUM (CP, ATP, Modul Ajar):\n"
             + rag_context
             + "\n\nINSTRUKSI PENTING: Hanya gunakan informasi dari konteks di atas untuk menjawab. Jika informasi yang dibutuhkan tidak ada dalam konteks di atas, katakan 'saya tidak tahu' atau 'tidak ditemukan dalam konteks'. JANGAN menebak atau menambahkan fakta di luar konteks."
+        )
+    else:
+        rag_text = (
+            "\n\nPERINGATAN: Tidak ada konteks dokumen kurikulum yang relevan ditemukan untuk pertanyaan ini. "
+            "JANGAN menebak, JANGAN memberikan jawaban langsung, dan JANGAN halusinasi. "
+            "Katakan kepada siswa bahwa Anda perlu mencari referensi komprehensif tentang topik ini, "
+            "dan ajukan pertanyaan penuntang untuk membantu siswa berpikir sendiri."
         )
 
     return base + curriculum_text + rag_text
