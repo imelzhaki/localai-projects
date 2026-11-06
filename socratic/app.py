@@ -152,42 +152,46 @@ def handle_user_input():
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # Ambil konteks RAG berdasarkan pertanyaan user
-    rag_context = ""
-    if st.session_state.rag_initialized and st.session_state.rag_collection is not None:
-        rag_context = get_rag_context(prompt, st.session_state.rag_collection)
+    # Tampilkan indikator proses saat RAG dan LLM sedang bekerja
+    with st.status("Saya sedang memproses ⏳", expanded=False) as status:
+        # Ambil konteks RAG berdasarkan pertanyaan user
+        rag_context = ""
+        if st.session_state.rag_initialized and st.session_state.rag_collection is not None:
+            rag_context = get_rag_context(prompt, st.session_state.rag_collection)
 
-    # Susun system prompt sesuai tahap dan konteks kurikulum
-    stage = st.session_state.stage
-    is_first = st.session_state.question_count == 0
-    system_prompt = build_system_prompt(
-        stage,
-        school_level=st.session_state.school_level,
-        class_level=st.session_state.class_level,
-        subject=st.session_state.subject,
-        rag_context=rag_context,
-        is_first=is_first,
-    )
-    model_messages = [{"role": "system", "content": system_prompt}] + list(
-        st.session_state.messages
-    )
+        # Susun system prompt sesuai tahap dan konteks kurikulum
+        stage = st.session_state.stage
+        is_first = st.session_state.question_count == 0
+        system_prompt = build_system_prompt(
+            stage,
+            school_level=st.session_state.school_level,
+            class_level=st.session_state.class_level,
+            subject=st.session_state.subject,
+            rag_context=rag_context,
+            is_first=is_first,
+        )
+        model_messages = [{"role": "system", "content": system_prompt}] + list(
+            st.session_state.messages
+        )
 
-    logger.info(
-        "Mengirim %d pesan ke LLM (stage: %s, question_count: %d, school: %s, class: %s)",
-        len(model_messages),
-        stage,
-        st.session_state.question_count,
-        st.session_state.school_level,
-        st.session_state.class_level,
-    )
+        logger.info(
+            "Mengirim %d pesan ke LLM (stage: %s, question_count: %d, school: %s, class: %s)",
+            len(model_messages),
+            stage,
+            st.session_state.question_count,
+            st.session_state.school_level,
+            st.session_state.class_level,
+        )
 
-    with st.chat_message("assistant"):
-        try:
-            response = st.write_stream(chat_stream(model_messages))
-        except Exception as exc:
-            logger.error("Gagal terhubung ke Ollama: %s", exc)
-            st.error(f"Gagal terhubung ke Ollama: {exc}")
-            response = ""
+        with st.chat_message("assistant"):
+            try:
+                response = st.write_stream(chat_stream(model_messages))
+            except Exception as exc:
+                logger.error("Gagal terhubung ke Ollama: %s", exc)
+                st.error(f"Gagal terhubung ke Ollama: {exc}")
+                response = ""
+
+        status.update(label="Selesai memproses ✅", state="complete")
 
     if response:
         assistant_message = build_assistant_message(response)
