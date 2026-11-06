@@ -51,6 +51,8 @@ def initialize_state():
         st.session_state.subject = None
     if "rag_initialized" not in st.session_state:
         st.session_state.rag_initialized = False
+    if "rag_loading" not in st.session_state:
+        st.session_state.rag_loading = False
 
 
 def display_history():
@@ -88,6 +90,11 @@ def render_curriculum_selector():
         placeholder="Masukkan nama mata pelajaran",
     )
 
+    if st.session_state.rag_loading:
+        st.info("Saya sedang memproses ⏳ — mohon tunggu hingga RAG selesai memuat dokumen kurikulum.")
+        st.button("Mulai bimbingan", type="primary", disabled=True)
+        return False
+
     if st.button("Mulai bimbingan", type="primary"):
         if not subject.strip():
             st.error("Mata pelajaran harus diisi.")
@@ -96,6 +103,9 @@ def render_curriculum_selector():
         st.session_state.class_level = class_level
         st.session_state.subject = subject.strip()
 
+        # Tandai RAG sedang memproses agar tombol disabled dan tampil indikator
+        st.session_state.rag_loading = True
+
         # Inisialisasi RAG
         logger.info(
             "Inisialisasi RAG untuk %s Kelas %s - %s",
@@ -103,7 +113,10 @@ def render_curriculum_selector():
             class_level,
             subject,
         )
-        collection = initialize_rag("documents")
+        try:
+            collection = initialize_rag("documents")
+        finally:
+            st.session_state.rag_loading = False
         st.session_state.rag_collection = collection
         st.session_state.rag_initialized = True
 
