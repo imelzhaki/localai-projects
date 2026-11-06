@@ -1,4 +1,6 @@
 import logging
+import threading
+
 import streamlit as st
 
 from history import load_history, save_history
@@ -55,6 +57,21 @@ def initialize_state():
         st.session_state.rag_loading = False
 
 
+def _initialize_rag_background(school_level, class_level, subject):
+    """Run RAG initialization in a background thread so UI stays responsive."""
+    try:
+        collection = initialize_rag("documents")
+        st.session_state.rag_collection = collection
+        st.session_state.rag_initialized = True
+    except Exception as exc:
+        logger.error("Gagal inisialisasi RAG: %s", exc)
+        st.session_state.rag_collection = None
+        st.session_state.rag_initialized = False
+    finally:
+        st.session_state.rag_loading = False
+        st.rerun()
+
+
 def display_history():
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
@@ -93,44 +110,38 @@ def render_curriculum_selector():
     if st.session_state.rag_loading:
         st.info("Saya sedang memproses ⏳ — mohon tunggu hingga RAG selesai memuat dokumen kurikulum.")
         st.button("Mulai bimbingan", type="primary", disabled=True)
+
+        # Mulai thread background hanya sekali (saat belum ada thread yang hidup)
+        if "rag_thread" not in st.session_state or not st.session_state.rag_thread.is_alive():
+            thread = threading.Thread(
+                target=_initialize_rag_background,
+                args=(
+                    st.session_state.school_level,
+                    st.session_state.class_level,
+                    st.session_state.subject,
+                ),
+                daemon=True,
+            )
+            st.session_state.rag_thread = thread
+            thread.start()
+
         return False
 
     if st.button("Mulai bimbingan", type="primary"):
         if not subject.strip():
             st.error("Mata pelajaran harus diisi.")
             return False
+
+        # Simpan data form ke session state sebelum rerun
         st.session_state.school_level = school_level
         st.session_state.class_level = class_level
         st.session_state.subject = subject.strip()
-
-        # Tandai RAG sedang memproses agar tombol disabled dan tampil indikator
         st.session_state.rag_loading = True
+        st.session_state.rag_initialized = False
+        st.session_state.rag_collection = None
 
-        # Inisialisasi RAG
-        logger.info(
-            "Inisialisasi RAG untuk %s Kelas %s - %s",
-            school_level,
-            class_level,
-            subject,
-        )
-        try:
-            collection = initialize_rag("documents")
-        finally:
-            st.session_state.rag_loading = False
-        st.session_state.rag_collection = collection
-        st.session_state.rag_initialized = True
-
-        if collection is not None:
-            st.success(
-                f"Konteks kurikulum disetel: {school_level} Kelas {class_level} - {subject}"
-            )
-        else:
-            st.warning(
-                f"Konteks kurikulum disetel: {school_level} Kelas {class_level} - {subject}. "
-                "Tidak ada dokumen kurikulum ditemukan di folder documents/."
-            )
         st.rerun()
-        return True
+        return False
 
     return False
 
