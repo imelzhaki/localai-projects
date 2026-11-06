@@ -1,8 +1,6 @@
 import logging
-import threading
 
 import streamlit as st
-from streamlit.runtime.scriptrunner import add_script_run_ctx
 
 from history import load_history, save_history
 from ollama_client import chat_stream
@@ -54,23 +52,12 @@ def initialize_state():
         st.session_state.subject = None
     if "rag_initialized" not in st.session_state:
         st.session_state.rag_initialized = False
-    if "rag_loading" not in st.session_state:
-        st.session_state.rag_loading = False
 
 
-def _initialize_rag_background(school_level, class_level, subject):
-    """Run RAG initialization in a background thread so UI stays responsive."""
-    try:
-        collection = initialize_rag("documents")
-        st.session_state.rag_collection = collection
-        st.session_state.rag_initialized = True
-    except Exception as exc:
-        logger.error("Gagal inisialisasi RAG: %s", exc)
-        st.session_state.rag_collection = None
-        st.session_state.rag_initialized = False
-    finally:
-        st.session_state.rag_loading = False
-        st.rerun()
+@st.cache_resource(show_spinner="Saya sedang memproses ⏳ — mohon tunggu hingga RAG selesai memuat dokumen kurikulum.")
+def _initialize_rag_cached():
+    """Inisialisasi RAG dengan spinner. Hasil di-cache sehingga hanya dijalankan sekali."""
+    return initialize_rag("documents")
 
 
 def display_history():
@@ -108,25 +95,7 @@ def render_curriculum_selector():
         placeholder="Masukkan nama mata pelajaran",
     )
 
-    if st.session_state.rag_loading:
-        st.info("Saya sedang memproses ⏳ — mohon tunggu hingga RAG selesai memuat dokumen kurikulum.")
-        st.button("Mulai bimbingan", type="primary", disabled=True)
-
-        # Mulai thread background hanya sekali (saat belum ada thread yang hidup)
-        if "rag_thread" not in st.session_state or not st.session_state.rag_thread.is_alive():
-            thread = threading.Thread(
-                target=_initialize_rag_background,
-                args=(
-                    st.session_state.school_level,
-                    st.session_state.class_level,
-                    st.session_state.subject,
-                ),
-                daemon=True,
-            )
-            add_script_run_ctx(thread)  # Agar st.rerun() dan session_state bekerja dari thread
-            st.session_state.rag_thread = thread
-            thread.start()
-
+    if st.session_state.rag_initialized:
         return False
 
     if st.button("Mulai bimbingan", type="primary"):
@@ -134,16 +103,33 @@ def render_curriculum_selector():
             st.error("Mata pelajaran harus diisi.")
             return False
 
-        # Simpan data form ke session state sebelum rerun
+        # Simpan data form ke session state
         st.session_state.school_level = school_level
         st.session_state.class_level = class_level
         st.session_state.subject = subject.strip()
-        st.session_state.rag_loading = True
-        st.session_state.rag_initialized = False
-        st.session_state.rag_collection = None
 
+        # Inisialisasi RAG dengan spinner (blokir hingga selesai, UI tetap menampilkan spinner)
+        try:
+            collection = _initialize_rag_cached()
+        except Exception as exc:
+            logger.error("Gagal inisialisasi RAG: %s", exc)
+            st.error(f"Gagal inisialisasi RAG: {exc}")
+            return False
+
+        st.session_state.rag_collection = collection
+        st.session_state.rag_initialized = True
+
+        if collection is not None:
+            st.success(
+                f"Konteks kurikulum disetel: {school_level} Kelas {class_level} - {subject}"
+            )
+        else:
+            st.warning(
+                f"Konteks kurikulum disetel: {school_level} Kelas {class_level} - {subject}. "
+                "Tidak ada dokumen kurikulum ditemukan di folder documents/."
+            )
         st.rerun()
-        return False
+        return True
 
     return False
 
