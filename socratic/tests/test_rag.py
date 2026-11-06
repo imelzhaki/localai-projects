@@ -58,6 +58,37 @@ class TestLoadDocuments:
         assert len(docs) == 1
         assert docs[0]["content"] == "konten teks"
 
+    def test_load_documents_muat_file_docx(self, tmp_path, monkeypatch):
+        # Mock DocxDocument agar mengembalikan paragraf dan tabel
+        mock_para1 = MagicMock()
+        mock_para1.text = "Ini adalah paragraf pertama dari dokumen Word."
+        mock_para2 = MagicMock()
+        mock_para2.text = "Ini adalah paragraf kedua."
+
+        mock_cell1 = MagicMock()
+        mock_cell1.text = "Kolom 1"
+        mock_cell2 = MagicMock()
+        mock_cell2.text = "Kolom 2"
+        mock_row = MagicMock()
+        mock_row.cells = [mock_cell1, mock_cell2]
+        mock_table = MagicMock()
+        mock_table.rows = [mock_row]
+
+        mock_doc = MagicMock()
+        mock_doc.paragraphs = [mock_para1, mock_para2]
+        mock_doc.tables = [mock_table]
+        monkeypatch.setattr(rag, "DocxDocument", lambda path: mock_doc)
+
+        docx_path = tmp_path / "materi.docx"
+        docx_path.write_bytes(b"fake docx")
+
+        docs = rag.load_documents(str(tmp_path))
+        assert len(docs) == 1
+        assert "Ini adalah paragraf pertama" in docs[0]["content"]
+        assert "Ini adalah paragraf kedua" in docs[0]["content"]
+        assert "Kolom 1 | Kolom 2" in docs[0]["content"]
+        assert docs[0]["source"].endswith("materi.docx")
+
 
 class TestSanitizeText:
     def test_sanitize_text_hapus_surrogate(self):

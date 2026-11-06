@@ -13,6 +13,7 @@ from typing import Optional
 import chromadb
 from sentence_transformers import SentenceTransformer
 from pypdf import PdfReader
+from docx import Document as DocxDocument
 import streamlit as st
 
 logger = logging.getLogger(__name__)
@@ -46,8 +47,21 @@ def _load_pdf_file(path: Path) -> str:
     return "\n".join(texts)
 
 
+def _load_docx_file(path: Path) -> str:
+    """Baca isi berkas DOCX (Word)."""
+    doc = DocxDocument(str(path))
+    paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
+    # Baca juga isi tabel
+    for table in doc.tables:
+        for row in table.rows:
+            cells = [cell.text.strip() for cell in row.cells if cell.text.strip()]
+            if cells:
+                paragraphs.append(" | ".join(cells))
+    return "\n".join(paragraphs)
+
+
 def load_documents(documents_dir: str = "documents") -> list[dict]:
-    """Muat semua dokumen (.txt, .pdf) dari direktori.
+    """Muat semua dokumen (.txt, .md, .pdf, .docx) dari direktori.
 
     Mengembalikan list dict dengan kunci: source, content.
     Mengembalikan list kosong jika direktori tidak ada atau kosong.
@@ -65,6 +79,8 @@ def load_documents(documents_dir: str = "documents") -> list[dict]:
             content = _load_text_file(path)
         elif suffix == ".pdf":
             content = _load_pdf_file(path)
+        elif suffix == ".docx":
+            content = _load_docx_file(path)
         else:
             continue
         if content.strip():
