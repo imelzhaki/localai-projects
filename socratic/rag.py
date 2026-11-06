@@ -123,7 +123,7 @@ def create_vector_store(chunks: list[str], metadatas: list[dict], collection_nam
     if not valid_pairs:
         logger.warning("Tidak ada chunk valid untuk dibuat vector store")
         client = chromadb.Client()
-        return client.create_collection(name=collection_name)
+        return client.get_or_create_collection(name=collection_name)
 
     chunks, metadatas = zip(*valid_pairs)
     chunks = list(chunks)
@@ -136,13 +136,13 @@ def create_vector_store(chunks: list[str], metadatas: list[dict], collection_nam
     if not valid_pairs:
         logger.warning("Tidak ada chunk valid setelah sanitasi")
         client = chromadb.Client()
-        return client.create_collection(name=collection_name)
+        return client.get_or_create_collection(name=collection_name)
     chunks, metadatas = zip(*valid_pairs)
     chunks = list(chunks)
     metadatas = list(metadatas)
 
     client = chromadb.Client()
-    collection = client.create_collection(name=collection_name)
+    collection = client.get_or_create_collection(name=collection_name)
 
     model = get_embedding_model()
     embeddings = model.encode(chunks).tolist()
@@ -179,7 +179,9 @@ def initialize_rag(documents_dir: str = "documents") -> Optional[object]:
     Mengembalikan collection jika berhasil, None jika tidak ada dokumen.
     """
     if "rag_collection" in st.session_state:
-        return st.session_state.rag_collection
+        rag_collection = st.session_state.rag_collection
+        if rag_collection is not None:
+            return rag_collection
 
     docs = load_documents(documents_dir)
     if not docs:

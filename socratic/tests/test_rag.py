@@ -168,7 +168,7 @@ class TestCreateVectorStore:
     def test_create_vector_store(self, monkeypatch):
         mock_collection = MagicMock()
         mock_client = MagicMock()
-        mock_client.create_collection.return_value = mock_collection
+        mock_client.get_or_create_collection.return_value = mock_collection
 
         monkeypatch.setattr(rag.chromadb, "Client", lambda: mock_client)
         _mock_st_session_state(monkeypatch)
@@ -214,7 +214,8 @@ class TestRetrieveContext:
 
 class TestInitializeRAG:
     def test_initialize_rag_tidak_ada_dokumen(self, monkeypatch, tmp_path):
-        _mock_st_session_state(monkeypatch)
+        mock_st = _mock_st_session_state(monkeypatch)
+        mock_st.session_state.rag_collection = None
 
         collection = rag.initialize_rag(str(tmp_path / "kosong"))
         assert collection is None
@@ -222,11 +223,12 @@ class TestInitializeRAG:
     def test_initialize_rag_dengan_dokumen(self, monkeypatch, tmp_path):
         (tmp_path / "materi.txt").write_text("Ini adalah materi contoh untuk pengujian RAG.", encoding="utf-8")
 
-        _mock_st_session_state(monkeypatch)
+        mock_st = _mock_st_session_state(monkeypatch)
+        mock_st.session_state.rag_collection = None
 
         mock_collection = MagicMock()
         mock_client = MagicMock()
-        mock_client.create_collection.return_value = mock_collection
+        mock_client.get_or_create_collection.return_value = mock_collection
         monkeypatch.setattr(rag.chromadb, "Client", lambda: mock_client)
 
         mock_model = _mock_encode([[0.1, 0.2, 0.3]])
