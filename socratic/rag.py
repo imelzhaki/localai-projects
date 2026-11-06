@@ -19,13 +19,14 @@ import streamlit as st
 
 logger = logging.getLogger(__name__)
 
-EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+EMBEDDING_MODEL = "intfloat/multilingual-e5-base"
 CHUNK_SIZE = 500
 CHUNK_OVERLAP = 50
 N_RESULTS = 10
 
 CHROMA_DB_PATH = r"C:\Dev\Research\chromadb"
 COLLECTION_NAME = "curriculum"
+EMBEDDING_MODEL_KEY = "embedding_model_version"
 
 
 def _sanitize_text(text: str) -> str:
@@ -194,9 +195,13 @@ def retrieve_context(query: str, collection, n_results: int = N_RESULTS) -> list
     results = collection.query(
         query_embeddings=query_embedding,
         n_results=n_results,
+        include=["documents", "metadatas", "distances"],
     )
 
     documents = results.get("documents", [[]])
+    metadatas = results.get("metadatas", [[]])
+    distances = results.get("distances", [[]])
+
     if not documents or not documents[0]:
         logger.info("Retrieval untuk query '%s': tidak ada hasil", query)
         return []
@@ -206,10 +211,76 @@ def retrieve_context(query: str, collection, n_results: int = N_RESULTS) -> list
         query,
         len(documents[0]),
     )
-    for i, doc in enumerate(documents[0]):
-        logger.debug("  Chunk %d: %s", i + 1, doc[:200])
+    for i, (doc, meta, dist) in enumerate(zip(documents[0], metadatas[0], distances[0])):
+        source = meta.get("source", "unknown") if meta else "unknown"
+        logger.info(
+            "  Chunk %d | source=%s | distance=%.4f | preview=%s",
+            i + 1,
+            source,
+            dist,
+            doc[:120].replace("\n", " "),
+        )
 
     return documents[0]
+
+
+def _get_stored_model_version(collection) -> Optional[str]:
+    """Baca versi model embedding yang disimpan di metadata collection atau chunk."""
+    # Coba baca dari collection metadata terlebih dahulu
+    try:
+        collection_meta = collection.metadata
+        if collection_meta and EMBEDDING_MODEL_KEY in collection_meta:
+            return collection_meta[EMBEDDING_MODEL_KEY]
+    except Exception:
+        pass
+
+    # Fallback: baca dari metadata chunk (untuk kompatibilitas dengan index lama)
+    try:
+        result = collection.get(limit=1)
+        if result and result.get("metadatas"):
+            for m in result["metadatas"]:
+                if m and EMBEDDING_MODEL_KEY in m:
+                    return m[EMBEDDING_MODEL_KEY]
+    except Exception:
+        pass
+    return None
+
+
+def _reset_collection_if_model_changed(client, collection) -> object:
+    """Hapus dan buat ulang collection jika model embedding berubah.
+
+    Embedding dari model lama (misal 384-dimensi) tidak kompatibel
+    dengan model baru (misal 768-dimensi). Harus re-index ulang semua dokumen.
+
+    Jika collection sudah memiliki dokumen tetapi tidak ada metadata model
+    versi (index dibuat sebelum pelacakan versi ditambahkan), collection
+    akan di-reset untuk menghindari campuran dimensi embedding.
+    """
+    stored_version = _get_stored_model_version(collection)
+    try:
+        existing_count = int(collection.count())
+    except (TypeError, ValueError):
+        existing_count = 0
+
+    if existing_count > 0 and stored_version is None:
+        logger.info(
+            "Collection memiliki %d dokumen tetapi tidak ada metadata model embedding. "
+            "Mengasumsikan index lama, menghapus dan re-index ulang.",
+            existing_count,
+        )
+        client.delete_collection(name=COLLECTION_NAME)
+        collection = client.create_collection(name=COLLECTION_NAME)
+        return collection
+
+    if stored_version and stored_version != EMBEDDING_MODEL:
+        logger.info(
+            "Model embedding berubah dari %s ke %s. Menghapus collection lama dan re-index ulang.",
+            stored_version,
+            EMBEDDING_MODEL,
+        )
+        client.delete_collection(name=COLLECTION_NAME)
+        collection = client.create_collection(name=COLLECTION_NAME)
+    return collection
 
 
 def initialize_rag(documents_dir: str = "documents") -> Optional[object]:
@@ -217,10 +288,14 @@ def initialize_rag(documents_dir: str = "documents") -> Optional[object]:
 
     Menggunakan ChromaDB persistent store di CHROMA_DB_PATH.
     Hanya mengindex dokumen yang belum ada di collection.
+    Jika model embedding berubah, collection akan dihapus dan di-reindex ulang.
     Mengembalikan collection jika berhasil, None jika tidak ada dokumen.
     """
     client = _get_chroma_client()
     collection = client.get_or_create_collection(name=COLLECTION_NAME)
+
+    # Deteksi perubahan model embedding -> hapus collection lama
+    collection = _reset_collection_if_model_changed(client, collection)
 
     # Cek apakah collection sudah memiliki dokumen
     existing_sources = _get_existing_sources(collection)
@@ -255,7 +330,7 @@ def initialize_rag(documents_dir: str = "documents") -> Optional[object]:
         for chunk in doc_chunks:
             if chunk and chunk.strip():
                 chunks.append(chunk)
-                metadatas.append({"source": doc["source"]})
+                metadatas.append({"source": doc["source"], EMBEDDING_MODEL_KEY: EMBEDDING_MODEL})
 
     if not chunks:
         st.session_state.rag_collection = collection
