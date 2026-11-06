@@ -2,6 +2,7 @@ import logging
 import threading
 
 import streamlit as st
+from streamlit.runtime.scriptrunner import add_script_run_ctx
 
 from history import load_history, save_history
 from ollama_client import chat_stream
@@ -122,6 +123,7 @@ def render_curriculum_selector():
                 ),
                 daemon=True,
             )
+            add_script_run_ctx(thread)  # Agar st.rerun() dan session_state bekerja dari thread
             st.session_state.rag_thread = thread
             thread.start()
 
