@@ -5,6 +5,7 @@ membuat vector store dengan ChromaDB, dan mengambil konteks relevan
 berdasarkan pertanyaan siswa.
 """
 
+import logging
 from pathlib import Path
 from typing import Optional
 
@@ -12,6 +13,8 @@ import chromadb
 from sentence_transformers import SentenceTransformer
 from pypdf import PdfReader
 import streamlit as st
+
+logger = logging.getLogger(__name__)
 
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 CHUNK_SIZE = 500
@@ -56,6 +59,8 @@ def load_documents(documents_dir: str = "documents") -> list[dict]:
             continue
         if content.strip():
             docs.append({"source": str(path), "content": content})
+            logger.info("Muat dokumen: %s (%d karakter)", path, len(content))
+    logger.info("Total dokumen dimuat dari %s: %d", documents_dir, len(docs))
     return docs
 
 
@@ -125,6 +130,7 @@ def initialize_rag(documents_dir: str = "documents") -> Optional[object]:
 
     docs = load_documents(documents_dir)
     if not docs:
+        logger.warning("Tidak ada dokumen kurikulum ditemukan di %s", documents_dir)
         return None
 
     chunks = []
@@ -136,10 +142,13 @@ def initialize_rag(documents_dir: str = "documents") -> Optional[object]:
             metadatas.append({"source": doc["source"]})
 
     if not chunks:
+        logger.warning("Tidak ada chunk yang dihasilkan dari dokumen di %s", documents_dir)
         return None
 
+    logger.info("Membuat vector store dari %d chunk", len(chunks))
     collection = create_vector_store(chunks, metadatas)
     st.session_state.rag_collection = collection
+    logger.info("RAG diinisialisasi dengan %d chunk dari %d dokumen", len(chunks), len(docs))
     return collection
 
 

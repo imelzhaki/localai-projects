@@ -97,13 +97,25 @@ def render_curriculum_selector():
         st.session_state.subject = subject.strip()
 
         # Inisialisasi RAG
+        logger.info(
+            "Inisialisasi RAG untuk %s Kelas %s - %s",
+            school_level,
+            class_level,
+            subject,
+        )
         collection = initialize_rag("documents")
         st.session_state.rag_collection = collection
         st.session_state.rag_initialized = True
 
-        st.success(
-            f"Konteks kurikulum disetel: {school_level} Kelas {class_level} - {subject}"
-        )
+        if collection is not None:
+            st.success(
+                f"Konteks kurikulum disetel: {school_level} Kelas {class_level} - {subject}"
+            )
+        else:
+            st.warning(
+                f"Konteks kurikulum disetel: {school_level} Kelas {class_level} - {subject}. "
+                "Tidak ada dokumen kurikulum ditemukan di folder documents/."
+            )
         st.rerun()
         return True
 
