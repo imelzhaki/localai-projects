@@ -170,6 +170,7 @@ def handle_user_input():
         st.markdown(prompt)
 
     # Tampilkan indikator proses saat RAG dan LLM sedang bekerja
+    response = ""
     with st.status("Saya sedang memproses ⏳", expanded=False) as status:
         # Ambil konteks RAG berdasarkan pertanyaan user
         rag_context = ""
@@ -209,13 +210,14 @@ def handle_user_input():
             st.session_state.class_level,
         )
 
-        with st.chat_message("assistant"):
-            try:
-                response = st.write_stream(chat_stream(model_messages))
-            except Exception as exc:
-                logger.error("Gagal terhubung ke Ollama: %s", exc)
-                st.error(f"Gagal terhubung ke Ollama: {exc}")
-                response = ""
+        # Kumpulkan respons dari LLM (tanpa streaming agar tidak terperangkap di status container)
+        try:
+            for chunk in chat_stream(model_messages):
+                response += chunk
+        except Exception as exc:
+            logger.error("Gagal terhubung ke Ollama: %s", exc)
+            st.error(f"Gagal terhubung ke Ollama: {exc}")
+            response = ""
 
         # === OBSERVABILITY: log raw LLM response ===
         logger.info("RAW LLM RESPONSE (%d chars):\n%s", len(response), response[:2000])
@@ -223,7 +225,10 @@ def handle_user_input():
 
         status.update(label="Selesai memproses ✅", state="complete")
 
+    # Tampilkan jawaban di luar status container agar tidak perlu klik expand
     if response:
+        with st.chat_message("assistant"):
+            st.write(response)
         assistant_message = build_assistant_message(response)
         st.session_state.messages.append(assistant_message)
         # Setiap respons asisten meningkatkan counter
