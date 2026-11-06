@@ -61,3 +61,38 @@ def test_intro_prompt_menggunakan_notasi_latex():
     prompt = build_system_prompt("guiding", is_first=True)
     assert "LaTeX" in prompt
     assert "$...$" in prompt
+
+
+def test_semua_prompt_mencakup_instruksi_faithfulness():
+    for tahap in ("guiding", "hint", "reveal"):
+        prompt = build_system_prompt(tahap)
+        assert "FAITHFULNESS" in prompt
+        assert "Hanya gunakan informasi yang tersedia dalam konteks" in prompt
+        assert "saya tidak tahu" in prompt
+        assert "tidak ditemukan dalam konteks" in prompt
+        assert "JANGAN menebak" in prompt
+        assert "JANGAN halusinasi" in prompt
+
+
+def test_intro_prompt_mencakup_instruksi_faithfulness():
+    prompt = build_system_prompt("guiding", is_first=True)
+    assert "FAITHFULNESS" in prompt
+    assert "Hanya gunakan informasi yang tersedia dalam konteks" in prompt
+    assert "saya tidak tahu" in prompt
+    assert "tidak ditemukan dalam konteks" in prompt
+    assert "JANGAN menebak" in prompt
+    assert "JANGAN halusinasi" in prompt
+
+
+def test_rag_context_mencakup_instruksi_faithfulness():
+    prompt = build_system_prompt(
+        "guiding",
+        school_level="SMP",
+        class_level="1",
+        subject="IPS",
+        rag_context="Perang Diponegoro berlangsung 1825-1830.",
+    )
+    assert "INSTRUKSI PENTING" in prompt
+    assert "Hanya gunakan informasi dari konteks di atas" in prompt
+    assert "JANGAN menebak atau menambahkan fakta di luar konteks" in prompt
+    assert "Perang Diponegoro berlangsung 1825-1830" in prompt
