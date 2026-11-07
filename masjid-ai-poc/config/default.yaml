@@ -1,0 +1,27 @@
+ollama:
+  base_url: "http://localhost:11434"
+  default_model: "qwen3:4b"
+  num_ctx: 8192
+  temperature: 0.0
+  think: false
+  timeout_seconds: 60
+  max_retries: 3
+
+qa:
+  mode: "B"  # A = full context, B = retrieval
+  embedding_model: "bge-m3"
+  top_k: 3
+  relevance_threshold: 0.6
+  full_context_token_threshold: 4000
+
+modules:
+  ziswaf:
+    golden_set: "eval/golden/ziswaf.jsonl"
+  finance_report:
+    golden_set: "eval/golden/finance.jsonl"
+  qa:
+    golden_set: "eval/golden/qa.jsonl"
+  khutbah:
+    golden_set: "eval/golden/khutbah.jsonl"
+  tpa:
+    golden_set: "eval/golden/tpa.jsonl"
