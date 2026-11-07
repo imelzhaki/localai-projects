@@ -1,0 +1,20 @@
+{"id": "ziswaf-001", "input": "Saya infaq 2.500.000 rupiah melalui tunai untuk pembangunan masjid", "expected": {"donor_name": null, "category": "infaq", "amount_raw": "2.500.000", "payment_method": "tunai", "note": "pembangunan masjid"}}
+{"id": "ziswaf-002", "input": "Zakat fitrah dari Budi 100rb via QRIS", "expected": {"donor_name": "Budi", "category": "zakat", "amount_raw": "100rb", "payment_method": "qris", "note": null}}
+{"id": "ziswaf-003", "input": "Wakaf tanah 500 juta dari pak Haji", "expected": {"donor_name": "pak Haji", "category": "wakaf", "amount_raw": "500 juta", "payment_method": null, "note": "tanah"}}
+{"id": "ziswaf-004", "input": "Infaq 2,5 jt", "expected": {"donor_name": null, "category": "infaq", "amount_raw": "2,5 jt", "payment_method": null, "note": null}}
+{"id": "ziswaf-005", "input": "Sedekah jariyah 1,5 juta dari Ibu Siti untuk edukasi anak", "expected": {"donor_name": "Ibu Siti", "category": "shadaqah", "amount_raw": "1,5 juta", "payment_method": null, "note": "edukasi anak"}}
+{"id": "ziswaf-006", "input": "Zakat mal 10.000.000 transfer ke rekening masjid", "expected": {"donor_name": null, "category": "zakat", "amount_raw": "10.000.000", "payment_method": "transfer", "note": "rekening masjid"}}
+{"id": "ziswaf-007", "input": "Infaq 75.000 dari anak-anak sekolah", "expected": {"donor_name": "anak-anak sekolah", "category": "infaq", "amount_raw": "75.000", "payment_method": null, "note": null}}
+{"id": "ziswaf-008", "input": "Wakaf 1jt dari Bapak Ahmad", "expected": {"donor_name": "Bapak Ahmad", "category": "wakaf", "amount_raw": "1jt", "payment_method": null, "note": null}}
+{"id": "ziswaf-009", "input": "Zakat fitrah 500 ribu rupiah tunai", "expected": {"donor_name": null, "category": "zakat", "amount_raw": "500 ribu rupiah", "payment_method": "tunai", "note": null}}
+{"id": "ziswaf-010", "input": "Infaq 2,5jt via qris untuk operasional masjid", "expected": {"donor_name": null, "category": "infaq", "amount_raw": "2,5jt", "payment_method": "qris", "note": "operasional masjid"}}
+{"id": "ziswaf-011", "input": "Sedekah dari pak Rudi 3.000.000 untuk bantuan sesama", "expected": {"donor_name": "pak Rudi", "category": "shadaqah", "amount_raw": "3.000.000", "payment_method": null, "note": "bantuan sesama"}}
+{"id": "ziswaf-012", "input": "Zakat 100rb", "expected": {"donor_name": null, "category": "zakat", "amount_raw": "100rb", "payment_method": null, "note": null}}
+{"id": "ziswaf-013", "input": "Infaq dari Ibu Ani 1.250.000 transfer", "expected": {"donor_name": "Ibu Ani", "category": "infaq", "amount_raw": "1.250.000", "payment_method": "transfer", "note": null}}
+{"id": "ziswaf-014", "input": "Wakaf buku 200 juta dari perpustakaan", "expected": {"donor_name": "perpustakaan", "category": "wakaf", "amount_raw": "200 juta", "payment_method": null, "note": "buku"}}
+{"id": "ziswaf-015", "input": "Zakat fitrah 100 ribu dari keluarga", "expected": {"donor_name": "keluarga", "category": "zakat", "amount_raw": "100 ribu", "payment_method": null, "note": null}}
+{"id": "ziswaf-016", "input": "Infaq 5 juta via tunai untuk yatim piatu", "expected": {"donor_name": null, "category": "infaq", "amount_raw": "5 juta", "payment_method": "tunai", "note": "yatim piatu"}}
+{"id": "ziswaf-017", "input": "Sedekah 75.000 dari rekan kerja", "expected": {"donor_name": "rekan kerja", "category": "shadaqah", "amount_raw": "75.000", "payment_method": null, "note": null}}
+{"id": "ziswaf-018", "input": "Zakat 2,5 jt dari Budi untuk zakat mal", "expected": {"donor_name": "Budi", "category": "zakat", "amount_raw": "2,5 jt", "payment_method": null, "note": "zakat mal"}}
+{"id": "ziswaf-019", "input": "Infaq 1jt dari anonimus", "expected": {"donor_name": "anonimus", "category": "infaq", "amount_raw": "1jt", "payment_method": null, "note": null}}
+{"id": "ziswaf-020", "input": "Wakaf 10.000.000 transfer untuk tanah pemakaman", "expected": {"donor_name": null, "category": "wakaf", "amount_raw": "10.000.000", "payment_method": "transfer", "note": "tanah pemakaman"}}
